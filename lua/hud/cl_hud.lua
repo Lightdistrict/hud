@@ -15,10 +15,14 @@ hook.Add("HUDShouldDraw", "maxhud_hide_darkrp_hud", function(name)
 	end
 end)
 
-local BAR_H = 22
-local ICON_W = 24
-local SEGMENT_BAR_W = 90
-local ICON_SIZE = 16
+-- Whole HUD scaled 40% taller than the original pass (22 -> 31), and the
+-- health/armor/hunger bars an additional 50% wider (90 -> 135).
+local BAR_H = math.Round(22 * 1.4)
+local ICON_W = BAR_H -- square icon block, matches the bar's full height
+local ICON_SIZE = BAR_H - 8
+local SEGMENT_BAR_W = math.Round(90 * 1.5)
+
+local COLOR_EMPTY_BG = Color(30, 30, 30, 220)
 
 local icons
 local function loadIcons()
@@ -28,14 +32,16 @@ local function loadIcons()
 	end
 end
 
-local function drawIcon(key, x, y, size, col)
+-- Icons are always drawn plain white, regardless of the segment/pill color
+-- behind them.
+local function drawIcon(key, x, y, size)
 	if not icons then loadIcons() end
 
 	local mat = icons[key]
 	if not mat or mat:IsError() then return end
 
 	surface.SetMaterial(mat)
-	surface.SetDrawColor(col)
+	surface.SetDrawColor(color_white)
 	surface.DrawTexturedRect(x, y, size, size)
 end
 
@@ -48,16 +54,22 @@ end
 - @param Color color
 - @param string iconKey
 - @param string|nil suffix -- e.g. "%" for hunger
+- @param bool|nil hideColorWhenEmpty -- if true, the icon block and any
+-   filled portion turn neutral grey instead of `color` when value <= 0
+-   (used for armor, so it doesn't look "full" of color at 0)
 -
 - @return number -- x position for the next segment
 ]]
-local function drawStatSegment(x, y, value, max, color, iconKey, suffix)
+local function drawStatSegment(x, y, value, max, color, iconKey, suffix, hideColorWhenEmpty)
 	max = max > 0 and max or 1
 	local frac = math.Clamp(value / max, 0, 1)
+	local hasValue = value > 0
 
-	surface.SetDrawColor(color)
+	local iconColor = (hideColorWhenEmpty and not hasValue) and COLOR_EMPTY_BG or color
+
+	surface.SetDrawColor(iconColor)
 	surface.DrawRect(x, y, ICON_W, BAR_H)
-	drawIcon(iconKey, x + (ICON_W - ICON_SIZE) / 2, y + (BAR_H - ICON_SIZE) / 2, ICON_SIZE, color_white)
+	drawIcon(iconKey, x + (ICON_W - ICON_SIZE) / 2, y + (BAR_H - ICON_SIZE) / 2, ICON_SIZE)
 
 	local barX = x + ICON_W
 	surface.SetDrawColor(20, 20, 20, 220)
@@ -74,7 +86,11 @@ local function drawStatSegment(x, y, value, max, color, iconKey, suffix)
 end
 
 --[[
-- Builds the right-side info strip's items in left-to-right order.
+- Builds the right-side info strip's items in left-to-right order. Each
+- item can carry its own `font` (defaults to the base label font) and
+- `widthMultiplier` (extra breathing room added to its box without
+- affecting its text size -- used for salary's "25% thicker" width-only
+- bump).
 ]]
 local function buildInfoItems(ply)
 	local paydelay = (GAMEMODE and GAMEMODE.Config and GAMEMODE.Config.paydelay) or Config.payDelayFallback
@@ -82,19 +98,19 @@ local function buildInfoItems(ply)
 	local hourlySalary = salary * (3600 / paydelay)
 
 	local items = {
-		{ icon = "salary", text = DarkRP.formatMoney(math.Round(hourlySalary)) .. "/hr" },
-		{ icon = "money", text = DarkRP.formatMoney(ply:getDarkRPVar("money") or 0) },
+		{ icon = "salary", text = DarkRP.formatMoney(math.Round(hourlySalary)) .. "/hr", font = MaxHUD.Fonts.label, widthMultiplier = 1.25 },
+		{ icon = "money", text = DarkRP.formatMoney(ply:getDarkRPVar("money") or 0), font = MaxHUD.Fonts.money },
 	}
 
 	if LevelSystem and LevelSystem.MyData then
 		local d = LevelSystem.MyData
 		local pct = (d.xpNeeded and d.xpNeeded > 0) and math.floor((d.xp / d.xpNeeded) * 100) or 0
 		local levelText = (d.prestige and d.prestige > 0 and ("P" .. d.prestige .. " ") or "") .. "Lvl " .. (d.level or 1) .. " " .. pct .. "%"
-		table.insert(items, { icon = "leveling", text = levelText })
+		table.insert(items, { icon = "leveling", text = levelText, font = MaxHUD.Fonts.level })
 	end
 
-	table.insert(items, { icon = "clock", text = os.date("%H:%M") })
-	table.insert(items, { icon = nil, text = os.date("%m/%d/%Y") })
+	table.insert(items, { icon = "clock", text = os.date("%H:%M"), font = MaxHUD.Fonts.time })
+	table.insert(items, { icon = nil, text = os.date("%m/%d/%Y"), font = MaxHUD.Fonts.date })
 
 	return items
 end
@@ -107,13 +123,15 @@ local function drawInfoStrip(items)
 	local ITEM_PAD = 10
 	local ICON_GAP = 6
 
-	surface.SetFont(MaxHUD.Fonts.label)
-
 	local widths = {}
+	local naturalWidths = {}
 	local totalWidth = 0
 	for i, item in ipairs(items) do
+		surface.SetFont(item.font)
 		local tw = surface.GetTextSize(item.text)
-		local w = ITEM_PAD + (item.icon and (ICON_SIZE + ICON_GAP) or 0) + tw + ITEM_PAD
+		local natural = ITEM_PAD + (item.icon and (ICON_SIZE + ICON_GAP) or 0) + tw + ITEM_PAD
+		local w = math.Round(natural * (item.widthMultiplier or 1))
+		naturalWidths[i] = natural
 		widths[i] = w
 		totalWidth = totalWidth + w
 	end
@@ -125,13 +143,14 @@ local function drawInfoStrip(items)
 	local cx = x
 	for i, item in ipairs(items) do
 		local w = widths[i]
-		local tx = cx + ITEM_PAD
+		local extra = w - naturalWidths[i]
+		local tx = cx + extra + ITEM_PAD
 
 		if item.icon then
-			drawIcon(item.icon, tx, (BAR_H - ICON_SIZE) / 2, ICON_SIZE, Config.colors.accent)
+			drawIcon(item.icon, tx, (BAR_H - ICON_SIZE) / 2, ICON_SIZE)
 		end
 
-		draw.SimpleText(item.text, MaxHUD.Fonts.label, cx + w - ITEM_PAD, BAR_H / 2, Config.colors.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+		draw.SimpleText(item.text, item.font, cx + w - ITEM_PAD, BAR_H / 2, Config.colors.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
 
 		if i < #items then
 			surface.SetDrawColor(255, 255, 255, 30)
@@ -148,7 +167,7 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 
 	local x = 0
 	x = drawStatSegment(x, 0, ply:Health(), ply:GetMaxHealth(), Config.colors.health, "health")
-	x = drawStatSegment(x, 0, ply:Armor(), Config.armorMax, Config.colors.armor, "armor")
+	x = drawStatSegment(x, 0, ply:Armor(), Config.armorMax, Config.colors.armor, "armor", nil, true)
 
 	local hungerPct = math.Round(((MaxHUD.MyHunger or Config.hunger.max) / Config.hunger.max) * 100)
 	drawStatSegment(x, 0, hungerPct, 100, Config.colors.hunger, "hunger", "%")

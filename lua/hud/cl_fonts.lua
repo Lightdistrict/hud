@@ -21,7 +21,16 @@ function MaxHUD.font(name, options)
 end
 local font = MaxHUD.font
 
+-- Base sizes are 40% larger than the original pass (17->24, 14->20) to
+-- match the whole HUD being scaled up; money/level/time/date each get an
+-- additional per-item bump on top of that base label size, per spec.
+local baseLabelSize = 20
+
 MaxHUD.Fonts = {
-	value = font("value", { font = "Montserrat", size = 17, weight = 700, antialias = true }),
-	label = font("label", { font = "Montserrat", size = 14, weight = 600, antialias = true }),
+	value = font("value", { font = "Montserrat", size = 24, weight = 700, antialias = true }),
+	label = font("label", { font = "Montserrat", size = baseLabelSize, weight = 600, antialias = true }),
+	money = font("money", { font = "Montserrat", size = math.Round(baseLabelSize * 1.25), weight = 600, antialias = true }),
+	level = font("level", { font = "Montserrat", size = math.Round(baseLabelSize * 1.25), weight = 600, antialias = true }),
+	time = font("time", { font = "Montserrat", size = math.Round(baseLabelSize * 1.15), weight = 600, antialias = true }),
+	date = font("date", { font = "Montserrat", size = math.Round(baseLabelSize * 1.20), weight = 600, antialias = true }),
 }
