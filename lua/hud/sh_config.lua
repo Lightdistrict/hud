@@ -15,13 +15,11 @@ Config.colors = {
 }
 
 --------------------------------------------------------------------------------
--- Icons -- from the "MAX Assets" workshop addon. These are just the filenames
--- given; if the workshop addon nests them in a subfolder under materials/
--- (e.g. "materials/hud/icon_health.png"), set `Config.iconFolder` below to
--- match ("hud/") rather than editing every entry.
+-- Icons -- from the "MAX Assets" workshop addon, which nests them under
+-- materials/hud/icons/ (max_assets/materials/hud/icons/icon_health.png etc).
 --------------------------------------------------------------------------------
 
-Config.iconFolder = ""
+Config.iconFolder = "hud/icons/"
 
 Config.icons = {
 	health = "icon_health.png",
