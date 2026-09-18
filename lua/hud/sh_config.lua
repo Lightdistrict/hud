@@ -63,7 +63,7 @@ Config.colors.lockdownGlowHigh = Color(255, 60, 60)
 
 -- The Laws board (mayor-managed, visible to everyone).
 Config.iconBadges.agenda = Color(140, 40, 40)
-Config.colors.lawsBody = Color(90, 30, 30, 200)
+Config.colors.lawsBody = Color(0, 0, 0, 160)
 
 -- Shown until a Mayor sets their own with /laws <text>, and restored
 -- whenever the current Mayor dies.
