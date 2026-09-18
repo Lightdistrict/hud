@@ -395,6 +395,18 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 	-- comma-formatted numbers instead of DarkRP.formatMoney().
 	local paydelay = (GAMEMODE and GAMEMODE.Config and GAMEMODE.Config.paydelay) or Config.payDelayFallback
 	local salary = ply:getDarkRPVar("salary") or 0
+
+	-- The levelsystem addon's salary skill only boosts the actual payout
+	-- via a server-side playerGetSalary hook -- it never touches the raw
+	-- getDarkRPVar("salary") value, so without this the HUD would show
+	-- the same number no matter how many points are invested. Replicate
+	-- the same bonus math here so what's displayed matches what's paid.
+	if LevelSystem and LevelSystem.MyData and LevelSystem.Config then
+		local salaryPoints = LevelSystem.MyData.skills.salary or 0
+		local perPoint = LevelSystem.Config.skills.salary and LevelSystem.Config.skills.salary.perPoint or 0
+		salary = salary + salaryPoints * perPoint
+	end
+
 	local hourlySalary = salary * (3600 / paydelay)
 	local salaryText = string.Comma(math.Round(hourlySalary)) .. "/hr"
 	local moneyText = string.Comma(math.Round(ply:getDarkRPVar("money") or 0))
