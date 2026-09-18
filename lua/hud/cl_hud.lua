@@ -412,11 +412,12 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 		x = x + drawStatusIcon(x, 0, "license") + CHIP_GAP
 	end
 
-	-- Second row, police/government only: live counts of active warrants
-	-- and currently-wanted players. Wanted status is a real DarkRP var
-	-- (already broadcast to everyone, so countable straight off
-	-- ply:isWanted() client-side); warrant status isn't networked at all
-	-- by DarkRP, so sv_warrants.lua mirrors just the count.
+	-- Second row, police/government only: live count of currently-wanted
+	-- players. Wanted status is a real DarkRP var (already broadcast to
+	-- everyone via setDarkRPVar's default target), so it's countable
+	-- straight off ply:isWanted() client-side with no extra networking.
+	-- Uses the "arrested" icon per request rather than the wanted-icon
+	-- badge above.
 	if ply:isCP() or ply:isMayor() then
 		local wantedCount = 0
 		for _, v in ipairs(player.GetAll()) do
@@ -425,8 +426,7 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 
 		local rowY = BAR_H + CHIP_GAP
 		local rx2 = CLUSTER_PAD_LEFT
-		rx2 = rx2 + drawIconTextBox(rx2, rowY, "wanted", tostring(wantedCount), Config.colors.text) + CHIP_GAP
-		rx2 = rx2 + drawIconTextBox(rx2, rowY, "warrant", tostring(MaxHUD.WarrantCount or 0), Config.colors.text) + CHIP_GAP
+		rx2 = rx2 + drawIconTextBox(rx2, rowY, "arrested", tostring(wantedCount), Config.colors.text) + CHIP_GAP
 	end
 
 	drawCenterAlerts()

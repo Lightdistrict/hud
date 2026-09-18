@@ -110,7 +110,6 @@ Config.icons = {
 	license = "icon_license.png",
 	lockdown = "icon_lockdown.png",
 	agenda = "icon_agenda.png",
-	warrant = "icon_warrant.png",
 }
 
 -- Armor doesn't have a real "max armor" getter on the base player -- 100 is
