@@ -27,3 +27,13 @@ hook.Add("PlayerInitialSpawn", "maxhud_arrested_sync", function(ply)
 		end
 	end)
 end)
+
+-- Test command: type "maxhud_testarrest [seconds]" in your own in-game
+-- console. Goes through the real ply:arrest() (same as a police arrest),
+-- so it exercises the exact same path as the real thing. Admin-gated since
+-- it does a real arrest (Arrested var + teleport to jail if configured).
+concommand.Add("maxhud_testarrest", function(ply, cmd, args)
+	if not IsValid(ply) or not ply:IsAdmin() then return end
+	local duration = tonumber(args[1]) or 30
+	ply:arrest(duration, ply)
+end)
