@@ -18,8 +18,13 @@ local Config = MaxHUD.Config
 -- hidden here so our own top-strip lockdown alert is the only visual,
 -- while the lockdown sound (a separate ConCommand, not part of this hook)
 -- still plays normally.
+-- "DarkRP_Agenda" is DarkRP's own generic per-team agenda display
+-- (Police/Gangster's agenda) -- hidden as part of removing the agenda
+-- system entirely; the actual agendas themselves are disabled server-side
+-- via DarkRP.disabledDefaults["agendas"] in the darkrp_modification addon,
+-- this just covers the display in case anything ever creates one anyway.
 hook.Add("HUDShouldDraw", "maxhud_hide_darkrp_hud", function(name)
-	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" then
+	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" or name == "DarkRP_Agenda" then
 		return false
 	end
 end)
