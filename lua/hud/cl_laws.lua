@@ -5,7 +5,7 @@
 
 local Config = MaxHUD.Config
 
-MaxHUD.LawsText = MaxHUD.LawsText or ""
+MaxHUD.LawsText = Config.defaultLaws
 
 net.Receive("maxhud_laws", function()
 	MaxHUD.LawsText = net.ReadString()
@@ -16,24 +16,28 @@ local PAD = 10
 
 --[[
 - Word-wraps `text` to fit within `maxWidth` using the currently-set font.
+- Respects existing newlines (e.g. a numbered rule list) as hard breaks,
+- only wrapping within each of those lines when it's too long on its own.
 -
 - @return table -- array of line strings
 ]]
 local function wrapText(text, maxWidth)
 	local lines = {}
-	local line = ""
 
-	for word in string.gmatch(text, "%S+") do
-		local candidate = line == "" and word or (line .. " " .. word)
-		if surface.GetTextSize(candidate) > maxWidth and line ~= "" then
-			table.insert(lines, line)
-			line = word
-		else
-			line = candidate
+	for paragraph in string.gmatch(text .. "\n", "([^\n]*)\n") do
+		local line = ""
+		for word in string.gmatch(paragraph, "%S+") do
+			local candidate = line == "" and word or (line .. " " .. word)
+			if surface.GetTextSize(candidate) > maxWidth and line ~= "" then
+				table.insert(lines, line)
+				line = word
+			else
+				line = candidate
+			end
 		end
+		table.insert(lines, line)
 	end
 
-	if line ~= "" then table.insert(lines, line) end
 	return lines
 end
 

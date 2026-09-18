@@ -52,12 +52,22 @@ Config.chipBackgrounds = {
 
 -- Status icons (wanted/arrested/license) shown to the right of the
 -- leveling bar, and center-strip alert icons (lockdown, etc). Plain
--- square icon chips, no bar/text -- just an on/off badge.
-Config.statusIconBg = Color(40, 42, 46, 200)
+-- square icon chips, no bar/text -- just an on/off badge. Pure
+-- transparent black, shared by all of them, per spec.
+Config.statusIconBg = Color(0, 0, 0, 160)
+
+-- The lockdown alert's "Lockdown is active!" text pulses between these
+-- two reds (see cl_hud.lua's drawCenterAlerts).
+Config.colors.lockdownGlowLow = Color(180, 30, 30)
+Config.colors.lockdownGlowHigh = Color(255, 60, 60)
 
 -- The Laws board (mayor-managed, visible to everyone).
 Config.iconBadges.agenda = Color(140, 40, 40)
 Config.colors.lawsBody = Color(90, 30, 30, 200)
+
+-- Shown until a Mayor sets their own with /laws <text>, and restored
+-- whenever the current Mayor dies.
+Config.defaultLaws = "1. Roleplay is mandatory at all times.\n2. RDM, NLR, and prop abuse are not allowed.\n3. Follow staff instructions."
 
 --------------------------------------------------------------------------------
 -- Icons -- from the "MAX Assets" workshop addon, which nests them under

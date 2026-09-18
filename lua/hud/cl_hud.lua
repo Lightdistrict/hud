@@ -100,15 +100,24 @@ MaxHUD.drawIconSection = drawIconSection
 local function drawBarChip(x, y, value, max, color, iconKey, text, suffix, hideColorWhenEmpty, leftAlignText)
 	max = max > 0 and max or 1
 	local frac = math.Clamp(value / max, 0, 1)
-	local w = ICON_W + SEGMENT_BAR_W
+	local label = text or (math.Round(value) .. (suffix or ""))
+
+	-- The bar always fits its own label -- long text (e.g. a high prestige
+	-- + level + percent string) simply widens the bar instead of
+	-- overflowing past its edge.
+	surface.SetFont(MaxHUD.Fonts.value)
+	local labelW = surface.GetTextSize(label)
+	local barW = math.max(SEGMENT_BAR_W, labelW + INFO_PAD * 2)
+
+	local w = ICON_W + barW
 	local barX = x + ICON_W
 
 	drawIconSection(x, y, ICON_W, BAR_H, iconKey, Config.iconBadges[iconKey], false)
-	draw.RoundedBoxEx(CHIP_RADIUS, barX, y, SEGMENT_BAR_W, BAR_H, Config.colors.chip, false, true, false, true)
+	draw.RoundedBoxEx(CHIP_RADIUS, barX, y, barW, BAR_H, Config.colors.chip, false, true, false, true)
 
 	if frac > 0 then
 		local fillColor = (hideColorWhenEmpty and value <= 0) and COLOR_EMPTY_FILL or color
-		local fillW = SEGMENT_BAR_W * frac
+		local fillW = barW * frac
 		if frac >= 0.999 then
 			-- Fill reaches the far edge -- round it to match the track
 			-- underneath, otherwise its flat corner would poke out past it.
@@ -119,11 +128,10 @@ local function drawBarChip(x, y, value, max, color, iconKey, text, suffix, hideC
 		end
 	end
 
-	local label = text or (math.Round(value) .. (suffix or ""))
 	if leftAlignText then
 		draw.SimpleText(label, MaxHUD.Fonts.value, barX + INFO_PAD, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 	else
-		draw.SimpleText(label, MaxHUD.Fonts.value, barX + SEGMENT_BAR_W - INFO_PAD, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+		draw.SimpleText(label, MaxHUD.Fonts.value, barX + barW - INFO_PAD, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
 	end
 
 	return w
@@ -184,13 +192,16 @@ end
 
 local CLOCK_GAP = 8 -- space between the time and date text, inside the same chip
 
+-- Time and date share one font/size (both use "time") so they line up on
+-- the same baseline instead of looking mismatched against each other.
+local CLOCK_FONT = MaxHUD.Fonts.time
+
 --[[
 - @return number -- the combined time+date chip's total width
 ]]
 local function measureClockChip(timeText, dateText)
-	surface.SetFont(MaxHUD.Fonts.time)
+	surface.SetFont(CLOCK_FONT)
 	local timeW = surface.GetTextSize(timeText)
-	surface.SetFont(MaxHUD.Fonts.date)
 	local dateW = surface.GetTextSize(dateText)
 	return ICON_W + INFO_PAD + timeW + CLOCK_GAP + dateW + INFO_PAD
 end
@@ -204,10 +215,10 @@ local function drawClockChip(x, y, w, timeText, dateText)
 	draw.RoundedBoxEx(CHIP_RADIUS, x + ICON_W, y, w - ICON_W, BAR_H, Config.chipBackgrounds.clock, false, true, false, true)
 
 	local tx = x + ICON_W + INFO_PAD
-	surface.SetFont(MaxHUD.Fonts.time)
+	surface.SetFont(CLOCK_FONT)
 	local timeW = surface.GetTextSize(timeText)
-	draw.SimpleText(timeText, MaxHUD.Fonts.time, tx, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-	draw.SimpleText(dateText, MaxHUD.Fonts.date, tx + timeW + CLOCK_GAP, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+	draw.SimpleText(timeText, CLOCK_FONT, tx, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+	draw.SimpleText(dateText, CLOCK_FONT, tx + timeW + CLOCK_GAP, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 end
 
 local BRAND_TEXT = "MAX SERVERS"
@@ -260,26 +271,75 @@ MaxHUD.CenterAlerts = MaxHUD.CenterAlerts or {}
 --[[
 - @param string iconKey
 - @param function checkFn -- function() return bool end
+- @param function|nil textFn -- function() return string end -- if given,
+-   draws an icon+text warning box (glowing red text) instead of a bare
+-   icon-only badge
 ]]
-function MaxHUD.RegisterCenterAlert(iconKey, checkFn)
-	table.insert(MaxHUD.CenterAlerts, { icon = iconKey, check = checkFn })
+function MaxHUD.RegisterCenterAlert(iconKey, checkFn, textFn)
+	table.insert(MaxHUD.CenterAlerts, { icon = iconKey, check = checkFn, text = textFn })
 end
 
 MaxHUD.RegisterCenterAlert("lockdown", function()
 	return GetGlobalBool("DarkRP_LockDown", false)
+end, function()
+	return "Lockdown is active!"
 end)
+
+--[[
+- @return number -- t interpolated between two colors (0..1)
+]]
+local function lerpColor(t, a, b)
+	return Color(Lerp(t, a.r, b.r), Lerp(t, a.g, b.g), Lerp(t, a.b, b.b))
+end
+
+--[[
+- Draws one center-strip alert: an icon-only badge if `text` is nil, or an
+- icon fused against a text box with a pulsing red glow if it's set.
+-
+- @return number -- the alert's width, so the caller can advance x
+]]
+local function drawAlertBox(x, y, iconKey, text)
+	if not text then
+		return drawStatusIcon(x, y, iconKey)
+	end
+
+	surface.SetFont(MaxHUD.Fonts.value)
+	local contentW = INFO_PAD + surface.GetTextSize(text) + INFO_PAD
+	local w = ICON_W + contentW
+
+	drawIconSection(x, y, ICON_W, BAR_H, iconKey, Config.statusIconBg, false)
+	draw.RoundedBoxEx(CHIP_RADIUS, x + ICON_W, y, contentW, BAR_H, Config.statusIconBg, false, true, false, true)
+
+	local pulse = (math.sin(RealTime() * 6) + 1) / 2
+	local glowColor = lerpColor(pulse, Config.colors.lockdownGlowLow, Config.colors.lockdownGlowHigh)
+	draw.SimpleText(text, MaxHUD.Fonts.value, x + ICON_W + INFO_PAD, y + BAR_H / 2, glowColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+
+	return w
+end
 
 local function drawCenterAlerts()
 	local active = {}
 	for _, alert in ipairs(MaxHUD.CenterAlerts) do
-		if alert.check() then table.insert(active, alert.icon) end
+		if alert.check() then
+			table.insert(active, { icon = alert.icon, text = alert.text and alert.text() or nil })
+		end
 	end
 	if #active == 0 then return end
 
-	local totalW = #active * BAR_H + (#active - 1) * CHIP_GAP
+	local totalW = 0
+	for _, a in ipairs(active) do
+		if a.text then
+			surface.SetFont(MaxHUD.Fonts.value)
+			totalW = totalW + ICON_W + INFO_PAD + surface.GetTextSize(a.text) + INFO_PAD
+		else
+			totalW = totalW + BAR_H
+		end
+	end
+	totalW = totalW + (#active - 1) * CHIP_GAP
+
 	local cx = ScrW() / 2 - totalW / 2
-	for _, iconKey in ipairs(active) do
-		cx = cx + drawStatusIcon(cx, 0, iconKey) + CHIP_GAP
+	for _, a in ipairs(active) do
+		cx = cx + drawAlertBox(cx, 0, a.icon, a.text) + CHIP_GAP
 	end
 end
 
@@ -359,10 +419,11 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 	drawInfoChip(rx, 0, w, "money", moneyText, MaxHUD.Fonts.money, Config.chipBackgrounds.salaryMoney)
 	rx = rx - CHIP_GAP
 
-	-- Salary's content was previously widened 25%, now condensed 20% on
-	-- top of that per spec (1.25 * 0.8 = 1.0 -- nets out to its natural
+	-- Salary's text now matches money's font/size exactly (was a smaller
+	-- font before). Content was previously widened 25%, now condensed 20%
+	-- on top of that per spec (1.25 * 0.8 = 1.0 -- nets out to its natural
 	-- width).
-	w = measureInfoChip("hourlySalary", salaryText, MaxHUD.Fonts.label, 1.0)
+	w = measureInfoChip("hourlySalary", salaryText, MaxHUD.Fonts.money, 1.0)
 	rx = rx - w
-	drawInfoChip(rx, 0, w, "hourlySalary", salaryText, MaxHUD.Fonts.label, Config.chipBackgrounds.salaryMoney)
+	drawInfoChip(rx, 0, w, "hourlySalary", salaryText, MaxHUD.Fonts.money, Config.chipBackgrounds.salaryMoney)
 end)
