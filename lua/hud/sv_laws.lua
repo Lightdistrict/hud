@@ -26,7 +26,7 @@ end
 
 -- ply:isMayor() is real DarkRP (modules/police/sh_init.lua), true for
 -- whichever job has `mayor = true` set (the stock Mayor job by default).
-DarkRP.defineChatCommand("laws", function(ply, args)
+local function setLawsCommand(ply, args)
 	if not ply:isMayor() then
 		DarkRP.notify(ply, 1, 4, "Only the Mayor can set the laws.")
 		return ""
@@ -37,7 +37,14 @@ DarkRP.defineChatCommand("laws", function(ply, args)
 
 	DarkRP.notify(ply, 0, 4, "The laws have been updated.")
 	return ""
-end)
+end
+
+-- Both names do the exact same thing -- registered as two separate
+-- commands (not one aliased to the other) since a chat message that
+-- didn't match either previously just silently did nothing, which is
+-- what looked like "doesn't update live".
+DarkRP.defineChatCommand("laws", setLawsCommand)
+DarkRP.defineChatCommand("addlaw", setLawsCommand)
 
 -- Reset to the default laws the moment the current Mayor dies.
 hook.Add("PlayerDeath", "maxhud_laws_reset_on_mayor_death", function(victim)

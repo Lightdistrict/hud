@@ -13,8 +13,13 @@ local Config = MaxHUD.Config
 -- favor of its own "DarkRP_LocalPlayerHUD" panel (see the real DarkRP
 -- source, gamemode/modules/hud/cl_hud.lua) -- hide that one panel too so we
 -- can draw our own version instead of stacking on top of it.
+-- "DarkRP_LockdownHUD" is DarkRP's own pulsing on-screen lockdown text
+-- (drawn separately from the chat "tip" message and the notify box) --
+-- hidden here so our own top-strip lockdown alert is the only visual,
+-- while the lockdown sound (a separate ConCommand, not part of this hook)
+-- still plays normally.
 hook.Add("HUDShouldDraw", "maxhud_hide_darkrp_hud", function(name)
-	if name == "DarkRP_LocalPlayerHUD" then
+	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" then
 		return false
 	end
 end)
