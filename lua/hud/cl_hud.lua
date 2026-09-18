@@ -23,7 +23,8 @@ local ICON_BADGE_SIZE = ICON_SIZE + 8
 local SEGMENT_BAR_W = math.Round(90 * 1.5)
 local CHIP_RADIUS = 6
 local CHIP_GAP = 6
-local CLUSTER_PAD = 8 -- left/right screen-edge padding for each cluster
+local CLUSTER_PAD_LEFT = 0 -- left cluster sits flush against the screen edge
+local CLUSTER_PAD_RIGHT = 8
 
 local COLOR_EMPTY_FILL = Color(60, 60, 60, 220)
 
@@ -114,9 +115,10 @@ end
 - @param string|nil iconKey
 - @param string text
 - @param string font
+- @param Color|nil bgColor -- defaults to the generic chip color
 ]]
-local function drawInfoChip(x, y, w, iconKey, text, font)
-	draw.RoundedBox(CHIP_RADIUS, x, y, w, BAR_H, Config.colors.chip)
+local function drawInfoChip(x, y, w, iconKey, text, font, bgColor)
+	draw.RoundedBox(CHIP_RADIUS, x, y, w, BAR_H, bgColor or Config.colors.chip)
 
 	if iconKey then
 		local badgeX, badgeY = x + INFO_PAD + ICON_SIZE / 2, y + BAR_H / 2
@@ -145,7 +147,7 @@ end
 - date text side by side with a small gap between them.
 ]]
 local function drawClockChip(x, y, w, timeText, dateText)
-	draw.RoundedBox(CHIP_RADIUS, x, y, w, BAR_H, Config.colors.chip)
+	draw.RoundedBox(CHIP_RADIUS, x, y, w, BAR_H, Config.chipBackgrounds.clock)
 
 	local badgeX, badgeY = x + INFO_PAD + ICON_SIZE / 2, y + BAR_H / 2
 	draw.RoundedBox(4, badgeX - ICON_BADGE_SIZE / 2, badgeY - ICON_BADGE_SIZE / 2, ICON_BADGE_SIZE, ICON_BADGE_SIZE, Config.iconBadges.clock)
@@ -158,12 +160,14 @@ local function drawClockChip(x, y, w, timeText, dateText)
 	draw.SimpleText(dateText, MaxHUD.Fonts.date, tx + timeW + CLOCK_GAP, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 end
 
+local BRAND_TEXT = "MAX SERVERS"
+
 --[[
 - @return number -- the brand chip's total width, without drawing anything
 ]]
 local function measureBrandChip()
 	surface.SetFont(MaxHUD.Fonts.brand)
-	return surface.GetTextSize("MAX Servers") + INFO_PAD * 2
+	return surface.GetTextSize(BRAND_TEXT) + INFO_PAD * 2
 end
 
 -- How long a full one-way sweep across the text takes, in seconds -- the
@@ -172,16 +176,14 @@ end
 local SCAN_SWEEP_SECONDS = 2
 
 --[[
-- Draws the brand chip at a known position: "MAX Servers", default white,
+- Draws the brand text at a known position: "MAX SERVERS", default white,
 - with a 3-letter-wide cyan window sweeping back and forth across it on a
-- loop.
+- loop. No chip background -- just floats on the shared strip, per spec.
 ]]
 local function drawBrandChip(x, y, w)
-	local text = "MAX Servers"
+	local text = BRAND_TEXT
 	local font = MaxHUD.Fonts.brand
 	surface.SetFont(font)
-
-	draw.RoundedBox(CHIP_RADIUS, x, y, w, BAR_H, Config.colors.chip)
 
 	local len = #text
 	local t = RealTime() % (SCAN_SWEEP_SECONDS * 2)
@@ -206,10 +208,10 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 	surface.DrawRect(0, 0, ScrW(), BAR_H)
 
 	-- Left cluster: job, health, armor, hunger, leveling.
-	local x = CLUSTER_PAD
+	local x = CLUSTER_PAD_LEFT
 	local jobText = ply:getDarkRPVar("job") or "Unemployed"
 	local jobW = measureInfoChip("job", jobText, MaxHUD.Fonts.job)
-	drawInfoChip(x, 0, jobW, "job", jobText, MaxHUD.Fonts.job)
+	drawInfoChip(x, 0, jobW, "job", jobText, MaxHUD.Fonts.job, Config.chipBackgrounds.job)
 	x = x + jobW + CHIP_GAP
 
 	x = x + drawBarChip(x, 0, ply:Health(), ply:GetMaxHealth(), Config.colors.health, "health") + CHIP_GAP
@@ -222,7 +224,7 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 		local d = LevelSystem.MyData
 		local pct = (d.xpNeeded and d.xpNeeded > 0) and math.floor((d.xp / d.xpNeeded) * 100) or 0
 		local levelText = (d.prestige and d.prestige > 0 and ("P" .. d.prestige .. " ") or "") .. "Lvl " .. (d.level or 1) .. " " .. pct .. "%"
-		drawBarChip(x, 0, d.xp or 0, d.xpNeeded or 1, Config.colors.accent, "leveling", levelText)
+		drawBarChip(x, 0, d.xp or 0, d.xpNeeded or 1, Config.colors.leveling, "leveling", levelText)
 	end
 
 	-- Right cluster: hourly salary, money, time, date, brand -- built
@@ -236,7 +238,7 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 	local timeText = os.date("%H:%M")
 	local dateText = os.date("%m/%d/%Y")
 
-	local rx = ScrW() - CLUSTER_PAD
+	local rx = ScrW() - CLUSTER_PAD_RIGHT
 	local w
 
 	w = measureBrandChip()
@@ -251,10 +253,10 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 
 	w = measureInfoChip("money", moneyText, MaxHUD.Fonts.money)
 	rx = rx - w
-	drawInfoChip(rx, 0, w, "money", moneyText, MaxHUD.Fonts.money)
+	drawInfoChip(rx, 0, w, "money", moneyText, MaxHUD.Fonts.money, Config.chipBackgrounds.salaryMoney)
 	rx = rx - CHIP_GAP
 
 	w = measureInfoChip("hourlySalary", salaryText, MaxHUD.Fonts.label, 1.25)
 	rx = rx - w
-	drawInfoChip(rx, 0, w, "hourlySalary", salaryText, MaxHUD.Fonts.label)
+	drawInfoChip(rx, 0, w, "hourlySalary", salaryText, MaxHUD.Fonts.label, Config.chipBackgrounds.salaryMoney)
 end)

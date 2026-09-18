@@ -6,16 +6,20 @@ local Config = MaxHUD.Config
 --------------------------------------------------------------------------------
 
 Config.colors = {
-	health = Color(214, 69, 69),
-	armor = Color(70, 130, 220),
-	hunger = Color(230, 150, 60),
+	-- Bar-fill colors -- deliberately a different shade from that stat's
+	-- icon badge color (Config.iconBadges below), so the badge and the
+	-- fill read as two distinct colors rather than one repeated color.
+	health = Color(163, 71, 57),
+	armor = Color(57, 142, 163),
+	hunger = Color(181, 122, 51),
+	leveling = Color(67, 143, 181),
 	accent = Color(80, 200, 255),
 
 	-- The one shared strip spanning the full screen width -- same
 	-- blackness level as the scoreboard/F4 menu's background.
 	strip = Color(0, 0, 0, 210),
-	-- Each individual chip sitting on top of the strip -- more opaque than
-	-- the strip itself so chips read as distinct "boxes".
+	-- Generic chip shell fallback (unused by name-specific chips below, but
+	-- kept as a default for anything that doesn't have its own tint).
 	chip = Color(20, 20, 22, 170),
 	-- Off-white (not pure white) for chip text, per spec -- icons stay pure
 	-- white (color_white), text is slightly muted.
@@ -33,6 +37,17 @@ Config.iconBadges = {
 	hourlySalary = Color(23, 145, 52),
 	money = Color(23, 145, 52),
 	clock = Color(97, 96, 96),
+}
+
+-- Chip-shell background colors for the non-bar (info-style) chips --
+-- job, salary+money (which share one color), and the combined time+date
+-- chip. The bar-style chips (health/armor/hunger/leveling) use the fill
+-- colors above instead; their unfilled track still uses the generic
+-- `Config.colors.chip`.
+Config.chipBackgrounds = {
+	job = Color(60, 104, 122),
+	salaryMoney = Color(62, 125, 89),
+	clock = Color(76, 77, 76),
 }
 
 --------------------------------------------------------------------------------
