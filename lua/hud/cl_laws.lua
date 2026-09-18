@@ -50,6 +50,7 @@ end
 hook.Add("HUDPaint", "maxhud_draw_laws", function()
 	if MaxHUD.LawsText == "" then return end
 	if not IsValid(LocalPlayer()) or not LocalPlayer():Alive() then return end
+	if MaxHUD.IsBigUIOpen() then return end
 
 	local barH = MaxHUD.BarHeight
 	local iconW = MaxHUD.IconSectionWidth

@@ -25,11 +25,27 @@ local Config = MaxHUD.Config
 -- this just covers the display in case anything ever creates one anyway.
 -- "DarkRP_ArrestedHUD" is DarkRP's own bottom-center jail countdown text
 -- -- hidden in favor of our own "Arrested (mm:ss)" status icon.
+-- "DarkRP_Hungermod" is the hungermod addon's own bottom-left hunger bar
+-- (gamemode/modules/hungermod/cl_init.lua) -- hidden since our own top-strip
+-- hunger chip already covers it.
 hook.Add("HUDShouldDraw", "maxhud_hide_darkrp_hud", function(name)
-	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" or name == "DarkRP_Agenda" or name == "DarkRP_ArrestedHUD" then
+	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" or name == "DarkRP_Agenda" or name == "DarkRP_ArrestedHUD" or name == "DarkRP_Hungermod" then
 		return false
 	end
 end)
+
+-- Whether this client's own scoreboard (Tab) or F4 menu is currently open --
+-- purely local UI state, never networked, so this only ever affects what
+-- this one player sees. Used to hide the laws board and the police wanted
+-- count row while either is open, since both otherwise visually overlap
+-- with the F4/scoreboard panels.
+local scoreboardOpen = false
+hook.Add("ScoreboardShow", "maxhud_scoreboard_open", function() scoreboardOpen = true end)
+hook.Add("ScoreboardHide", "maxhud_scoreboard_open", function() scoreboardOpen = false end)
+
+function MaxHUD.IsBigUIOpen()
+	return scoreboardOpen or (F4menu and IsValid(F4menu.frame) and F4menu.frame:IsVisible())
+end
 
 local BAR_H = math.Round(22 * 1.4)
 local ICON_W = BAR_H -- the icon section of any chip, square, matches chip height
@@ -417,8 +433,10 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 	-- everyone via setDarkRPVar's default target), so it's countable
 	-- straight off ply:isWanted() client-side with no extra networking.
 	-- Uses the "arrested" icon per request rather than the wanted-icon
-	-- badge above.
-	if ply:isCP() or ply:isMayor() then
+	-- badge above. Hidden while the scoreboard or F4 menu is open (this
+	-- client's own local UI state only) since it otherwise sits right on
+	-- top of those panels.
+	if (ply:isCP() or ply:isMayor()) and not MaxHUD.IsBigUIOpen() then
 		local wantedCount = 0
 		for _, v in ipairs(player.GetAll()) do
 			if v:isWanted() then wantedCount = wantedCount + 1 end
