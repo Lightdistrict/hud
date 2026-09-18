@@ -23,8 +23,10 @@ local Config = MaxHUD.Config
 -- system entirely; the actual agendas themselves are disabled server-side
 -- via DarkRP.disabledDefaults["agendas"] in the darkrp_modification addon,
 -- this just covers the display in case anything ever creates one anyway.
+-- "DarkRP_ArrestedHUD" is DarkRP's own bottom-center jail countdown text
+-- -- hidden in favor of our own "Arrested (mm:ss)" status icon.
 hook.Add("HUDShouldDraw", "maxhud_hide_darkrp_hud", function(name)
-	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" or name == "DarkRP_Agenda" then
+	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" or name == "DarkRP_Agenda" or name == "DarkRP_ArrestedHUD" then
 		return false
 	end
 end)
@@ -396,17 +398,35 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 
 	-- Status icons -- wanted/arrested/license, real DarkRP state, verified
 	-- against the actual gamemode source (ply:isWanted/isArrested, and the
-	-- "HasGunlicense" DarkRP var used by DarkRP's own police module). The
-	-- wanted timer itself is server-only in DarkRP (never networked), so
-	-- sv_wanted.lua mirrors its duration to the client for this countdown.
+	-- "HasGunlicense" DarkRP var used by DarkRP's own police module). Both
+	-- countdown timers are server-only in DarkRP (never networked on their
+	-- own), so sv_wanted.lua/sv_arrested.lua mirror their durations to the
+	-- client.
 	if ply:isWanted() then
 		x = x + drawIconTextBox(x, 0, "wanted", MaxHUD.GetWantedText(), Config.colors.text) + CHIP_GAP
 	end
 	if ply:isArrested() then
-		x = x + drawStatusIcon(x, 0, "arrested") + CHIP_GAP
+		x = x + drawIconTextBox(x, 0, "arrested", MaxHUD.GetArrestedText(), Config.colors.text) + CHIP_GAP
 	end
 	if ply:getDarkRPVar("HasGunlicense") then
 		x = x + drawStatusIcon(x, 0, "license") + CHIP_GAP
+	end
+
+	-- Second row, police/government only: live counts of active warrants
+	-- and currently-wanted players. Wanted status is a real DarkRP var
+	-- (already broadcast to everyone, so countable straight off
+	-- ply:isWanted() client-side); warrant status isn't networked at all
+	-- by DarkRP, so sv_warrants.lua mirrors just the count.
+	if ply:isCP() or ply:isMayor() then
+		local wantedCount = 0
+		for _, v in ipairs(player.GetAll()) do
+			if v:isWanted() then wantedCount = wantedCount + 1 end
+		end
+
+		local rowY = BAR_H + CHIP_GAP
+		local rx2 = CLUSTER_PAD_LEFT
+		rx2 = rx2 + drawIconTextBox(rx2, rowY, "wanted", tostring(wantedCount), Config.colors.text) + CHIP_GAP
+		rx2 = rx2 + drawIconTextBox(rx2, rowY, "warrant", tostring(MaxHUD.WarrantCount or 0), Config.colors.text) + CHIP_GAP
 	end
 
 	drawCenterAlerts()
