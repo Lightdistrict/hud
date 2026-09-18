@@ -11,16 +11,28 @@ Config.colors = {
 	hunger = Color(230, 150, 60),
 	accent = Color(80, 200, 255),
 
-	-- The one shared translucent strip spanning the full screen width.
-	strip = Color(0, 0, 0, 90),
+	-- The one shared strip spanning the full screen width -- same
+	-- blackness level as the scoreboard/F4 menu's background.
+	strip = Color(0, 0, 0, 210),
 	-- Each individual chip sitting on top of the strip -- more opaque than
 	-- the strip itself so chips read as distinct "boxes".
 	chip = Color(20, 20, 22, 170),
-	-- The lighter badge drawn behind every icon, inside its chip.
-	iconBadge = Color(255, 255, 255, 40),
 	-- Off-white (not pure white) for chip text, per spec -- icons stay pure
 	-- white (color_white), text is slightly muted.
 	text = Color(225, 225, 225),
+}
+
+-- The small colored box directly behind each icon, per icon key -- exact
+-- values as specified, not a shared generic tint.
+Config.iconBadges = {
+	job = Color(113, 142, 171),
+	health = Color(214, 20, 15),
+	armor = Color(28, 126, 237),
+	hunger = Color(232, 116, 30),
+	leveling = Color(4, 157, 214),
+	hourlySalary = Color(23, 145, 52),
+	money = Color(23, 145, 52),
+	clock = Color(97, 96, 96),
 }
 
 --------------------------------------------------------------------------------

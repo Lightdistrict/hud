@@ -77,7 +77,7 @@ local function drawBarChip(x, y, value, max, color, iconKey, text, suffix, hideC
 	end
 
 	local badgeX, badgeY = x + ICON_W / 2, y + BAR_H / 2
-	draw.RoundedBox(4, badgeX - ICON_BADGE_SIZE / 2, badgeY - ICON_BADGE_SIZE / 2, ICON_BADGE_SIZE, ICON_BADGE_SIZE, Config.colors.iconBadge)
+	draw.RoundedBox(4, badgeX - ICON_BADGE_SIZE / 2, badgeY - ICON_BADGE_SIZE / 2, ICON_BADGE_SIZE, ICON_BADGE_SIZE, Config.iconBadges[iconKey])
 	drawIcon(iconKey, badgeX - ICON_SIZE / 2, badgeY - ICON_SIZE / 2, ICON_SIZE)
 
 	local label = text or (math.Round(value) .. (suffix or ""))
@@ -120,11 +120,42 @@ local function drawInfoChip(x, y, w, iconKey, text, font)
 
 	if iconKey then
 		local badgeX, badgeY = x + INFO_PAD + ICON_SIZE / 2, y + BAR_H / 2
-		draw.RoundedBox(4, badgeX - ICON_BADGE_SIZE / 2, badgeY - ICON_BADGE_SIZE / 2, ICON_BADGE_SIZE, ICON_BADGE_SIZE, Config.colors.iconBadge)
+		draw.RoundedBox(4, badgeX - ICON_BADGE_SIZE / 2, badgeY - ICON_BADGE_SIZE / 2, ICON_BADGE_SIZE, ICON_BADGE_SIZE, Config.iconBadges[iconKey])
 		drawIcon(iconKey, badgeX - ICON_SIZE / 2, badgeY - ICON_SIZE / 2, ICON_SIZE)
 	end
 
 	draw.SimpleText(text, font, x + w - INFO_PAD, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_RIGHT, TEXT_ALIGN_CENTER)
+end
+
+local CLOCK_GAP = 8 -- space between the time and date text, inside the same chip
+
+--[[
+- @return number -- the combined time+date chip's total width
+]]
+local function measureClockChip(timeText, dateText)
+	surface.SetFont(MaxHUD.Fonts.time)
+	local timeW = surface.GetTextSize(timeText)
+	surface.SetFont(MaxHUD.Fonts.date)
+	local dateW = surface.GetTextSize(dateText)
+	return INFO_PAD + ICON_SIZE + INFO_ICON_GAP + timeW + CLOCK_GAP + dateW + INFO_PAD
+end
+
+--[[
+- Draws the combined time+date chip: one icon, one chip shell, time and
+- date text side by side with a small gap between them.
+]]
+local function drawClockChip(x, y, w, timeText, dateText)
+	draw.RoundedBox(CHIP_RADIUS, x, y, w, BAR_H, Config.colors.chip)
+
+	local badgeX, badgeY = x + INFO_PAD + ICON_SIZE / 2, y + BAR_H / 2
+	draw.RoundedBox(4, badgeX - ICON_BADGE_SIZE / 2, badgeY - ICON_BADGE_SIZE / 2, ICON_BADGE_SIZE, ICON_BADGE_SIZE, Config.iconBadges.clock)
+	drawIcon("clock", badgeX - ICON_SIZE / 2, badgeY - ICON_SIZE / 2, ICON_SIZE)
+
+	local tx = x + INFO_PAD + ICON_SIZE + INFO_ICON_GAP
+	surface.SetFont(MaxHUD.Fonts.time)
+	local timeW = surface.GetTextSize(timeText)
+	draw.SimpleText(timeText, MaxHUD.Fonts.time, tx, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+	draw.SimpleText(dateText, MaxHUD.Fonts.date, tx + timeW + CLOCK_GAP, y + BAR_H / 2, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
 end
 
 --[[
@@ -135,18 +166,35 @@ local function measureBrandChip()
 	return surface.GetTextSize("MAX Servers") + INFO_PAD * 2
 end
 
+-- How long a full one-way sweep across the text takes, in seconds -- the
+-- window bounces back and forth (like a Cylon/KITT scanner) rather than
+-- wrapping, so a full cycle is twice this.
+local SCAN_SWEEP_SECONDS = 2
+
 --[[
-- Draws the brand chip at a known position: "MAX" in the cyan accent color,
-- "Servers" in white.
+- Draws the brand chip at a known position: "MAX Servers", default white,
+- with a 3-letter-wide cyan window sweeping back and forth across it on a
+- loop.
 ]]
 local function drawBrandChip(x, y, w)
+	local text = "MAX Servers"
 	local font = MaxHUD.Fonts.brand
 	surface.SetFont(font)
-	local maxW = surface.GetTextSize("MAX")
 
 	draw.RoundedBox(CHIP_RADIUS, x, y, w, BAR_H, Config.colors.chip)
-	draw.SimpleText("MAX", font, x + INFO_PAD, y + BAR_H / 2, Config.colors.accent, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-	draw.SimpleText(" Servers", font, x + INFO_PAD + maxW, y + BAR_H / 2, color_white, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+
+	local len = #text
+	local t = RealTime() % (SCAN_SWEEP_SECONDS * 2)
+	local progress = t < SCAN_SWEEP_SECONDS and (t / SCAN_SWEEP_SECONDS) or (2 - t / SCAN_SWEEP_SECONDS)
+	local center = progress * (len - 1)
+
+	local cx = x + INFO_PAD
+	for i = 1, len do
+		local ch = text:sub(i, i)
+		local col = math.abs((i - 1) - center) <= 1.2 and Config.colors.accent or color_white
+		draw.SimpleText(ch, font, cx, y + BAR_H / 2, col, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+		cx = cx + surface.GetTextSize(ch)
+	end
 end
 
 hook.Add("HUDPaint", "maxhud_draw", function()
@@ -196,14 +244,9 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 	drawBrandChip(rx, 0, w)
 	rx = rx - CHIP_GAP
 
-	w = measureInfoChip(nil, dateText, MaxHUD.Fonts.date)
+	w = measureClockChip(timeText, dateText)
 	rx = rx - w
-	drawInfoChip(rx, 0, w, nil, dateText, MaxHUD.Fonts.date)
-	rx = rx - CHIP_GAP
-
-	w = measureInfoChip("clock", timeText, MaxHUD.Fonts.time)
-	rx = rx - w
-	drawInfoChip(rx, 0, w, "clock", timeText, MaxHUD.Fonts.time)
+	drawClockChip(rx, 0, w, timeText, dateText)
 	rx = rx - CHIP_GAP
 
 	w = measureInfoChip("money", moneyText, MaxHUD.Fonts.money)
