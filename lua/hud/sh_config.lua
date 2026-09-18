@@ -102,8 +102,3 @@ Config.icons = {
 -- the vanilla HL2 cap. Bump this if a skill/job effect can push it higher so
 -- the bar doesn't visually cap out early.
 Config.armorMax = 100
-
--- DarkRP's own pay interval (GAMEMODE.Config.paydelay, in seconds) isn't
--- known until the gamemode's loaded -- this is only the fallback used if
--- that config value can't be read for some reason.
-Config.payDelayFallback = 160

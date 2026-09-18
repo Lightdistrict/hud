@@ -389,11 +389,10 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 
 	drawCenterAlerts()
 
-	-- Right cluster: money, hourly salary, time+date, brand -- built
-	-- right-to-left from the screen edge so the visual order still reads
-	-- left-to-right. No currency symbol on the numbers, per spec -- plain
-	-- comma-formatted numbers instead of DarkRP.formatMoney().
-	local paydelay = (GAMEMODE and GAMEMODE.Config and GAMEMODE.Config.paydelay) or Config.payDelayFallback
+	-- Right cluster: money, salary, time+date, brand -- built right-to-left
+	-- from the screen edge so the visual order still reads left-to-right.
+	-- No currency symbol on the numbers, per spec -- plain comma-formatted
+	-- numbers instead of DarkRP.formatMoney().
 	local salary = ply:getDarkRPVar("salary") or 0
 
 	-- The levelsystem addon's salary skill only boosts the actual payout
@@ -407,8 +406,12 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 		salary = salary + salaryPoints * perPoint
 	end
 
-	local hourlySalary = salary * (3600 / paydelay)
-	local salaryText = string.Comma(math.Round(hourlySalary)) .. "/hr"
+	-- Shown as the flat per-paycheck amount, not an hourly projection --
+	-- an hourly figure scales a flat skill bonus (e.g. +$3/point) by
+	-- 3600/paydelay, so a small perPoint value looked like a huge, oddly
+	-- inconsistent jump on screen instead of the exact flat amount
+	-- configured.
+	local salaryText = string.Comma(math.Round(salary)) .. "/paycheck"
 	local moneyText = string.Comma(math.Round(ply:getDarkRPVar("money") or 0))
 	local timeText = os.date("%H:%M")
 	local dateText = os.date("%m/%d/%Y")
