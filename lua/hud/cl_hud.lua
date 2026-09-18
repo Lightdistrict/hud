@@ -190,6 +190,25 @@ local function drawStatusIcon(x, y, iconKey)
 	return BAR_H
 end
 
+--[[
+- Draws an icon fused against a text box, same transparent-black
+- background as the plain status icons -- used for wanted (with its
+- countdown) and reused by the lockdown alert below.
+-
+- @return number -- total width, so the caller can advance x
+]]
+local function drawIconTextBox(x, y, iconKey, text, textColor)
+	surface.SetFont(MaxHUD.Fonts.value)
+	local contentW = INFO_PAD + surface.GetTextSize(text) + INFO_PAD
+	local w = ICON_W + contentW
+
+	drawIconSection(x, y, ICON_W, BAR_H, iconKey, Config.statusIconBg, false)
+	draw.RoundedBoxEx(CHIP_RADIUS, x + ICON_W, y, contentW, BAR_H, Config.statusIconBg, false, true, false, true)
+	draw.SimpleText(text, MaxHUD.Fonts.value, x + ICON_W + INFO_PAD, y + BAR_H / 2, textColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
+
+	return w
+end
+
 local CLOCK_GAP = 8 -- space between the time and date text, inside the same chip
 
 -- Time and date share one font/size (both use "time") so they line up on
@@ -303,18 +322,9 @@ local function drawAlertBox(x, y, iconKey, text)
 		return drawStatusIcon(x, y, iconKey)
 	end
 
-	surface.SetFont(MaxHUD.Fonts.value)
-	local contentW = INFO_PAD + surface.GetTextSize(text) + INFO_PAD
-	local w = ICON_W + contentW
-
-	drawIconSection(x, y, ICON_W, BAR_H, iconKey, Config.statusIconBg, false)
-	draw.RoundedBoxEx(CHIP_RADIUS, x + ICON_W, y, contentW, BAR_H, Config.statusIconBg, false, true, false, true)
-
 	local pulse = (math.sin(RealTime() * 6) + 1) / 2
 	local glowColor = lerpColor(pulse, Config.colors.lockdownGlowLow, Config.colors.lockdownGlowHigh)
-	draw.SimpleText(text, MaxHUD.Fonts.value, x + ICON_W + INFO_PAD, y + BAR_H / 2, glowColor, TEXT_ALIGN_LEFT, TEXT_ALIGN_CENTER)
-
-	return w
+	return drawIconTextBox(x, y, iconKey, text, glowColor)
 end
 
 local function drawCenterAlerts()
@@ -376,9 +386,11 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 
 	-- Status icons -- wanted/arrested/license, real DarkRP state, verified
 	-- against the actual gamemode source (ply:isWanted/isArrested, and the
-	-- "HasGunlicense" DarkRP var used by DarkRP's own police module).
+	-- "HasGunlicense" DarkRP var used by DarkRP's own police module). The
+	-- wanted timer itself is server-only in DarkRP (never networked), so
+	-- sv_wanted.lua mirrors its duration to the client for this countdown.
 	if ply:isWanted() then
-		x = x + drawStatusIcon(x, 0, "wanted") + CHIP_GAP
+		x = x + drawIconTextBox(x, 0, "wanted", MaxHUD.GetWantedText(), Config.colors.text) + CHIP_GAP
 	end
 	if ply:isArrested() then
 		x = x + drawStatusIcon(x, 0, "arrested") + CHIP_GAP
