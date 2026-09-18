@@ -1,7 +1,11 @@
--- The Laws board: a short message the Mayor sets via /laws <text>,
--- broadcast to every connected player, and always showing something
--- (starts on Config.defaultLaws, resets back to it if the current Mayor
--- dies). Independent of DarkRP's own generic Agenda system (which is
+-- The Laws board: three permanent laws (Config.defaultLawsList), never
+-- editable, plus any number of additional laws the Mayor appends on top
+-- with /addlaw <text> -- numbered continuing on from the permanent three.
+-- /removelaw takes back the most recently added one (never touches the
+-- permanent three). /laws (no args) clears all additional laws, back to
+-- just the permanent three -- the same reset that happens automatically
+-- when the current Mayor dies. Broadcast live to every connected player.
+-- Independent of DarkRP's own generic Agenda system (which is
 -- one-agenda-per-listening-team, not "everyone" -- reusing it here would
 -- silently break Police/Gang's own agendas since they already listen on
 -- their own teams).
@@ -10,9 +14,33 @@ local Config = MaxHUD.Config
 
 util.AddNetworkString("maxhud_laws")
 
-MaxHUD.LawsText = Config.defaultLaws
+MaxHUD.AdditionalLaws = MaxHUD.AdditionalLaws or {}
+
+--[[
+- @return string -- the permanent three, then any additional laws, all
+-   numbered in one continuous list
+]]
+local function buildLawsText()
+	local lines = {}
+	local n = 0
+
+	for _, law in ipairs(Config.defaultLawsList) do
+		n = n + 1
+		table.insert(lines, n .. ". " .. law)
+	end
+
+	for _, law in ipairs(MaxHUD.AdditionalLaws) do
+		n = n + 1
+		table.insert(lines, n .. ". " .. law)
+	end
+
+	return table.concat(lines, "\n")
+end
+
+MaxHUD.LawsText = buildLawsText()
 
 local function broadcastLaws()
+	MaxHUD.LawsText = buildLawsText()
 	net.Start("maxhud_laws")
 		net.WriteString(MaxHUD.LawsText)
 	net.Broadcast()
@@ -24,53 +52,100 @@ local function sendLawsTo(target)
 	net.Send(target)
 end
 
--- ply:isMayor() is real DarkRP (modules/police/sh_init.lua), true for
--- whichever job has `mayor = true` set (the stock Mayor job by default).
--- Wrapped in pcall so a job-table edge case can't silently eat the whole
--- command with zero feedback -- if this errors, the player (and console)
--- now hear about it instead of the command just doing nothing.
-local function setLawsCommand(ply, args)
+local function resetLaws()
+	MaxHUD.AdditionalLaws = {}
+	broadcastLaws()
+end
+
+--[[
+- ply:isMayor() is real DarkRP (modules/police/sh_init.lua), true for
+- whichever job has `mayor = true` set (the stock Mayor job by default).
+- Wrapped in pcall so a job-table edge case can't silently eat a command
+- with zero feedback.
+-
+- @return bool ok, string|nil errorMessage
+]]
+local function checkIsMayor(ply)
 	local ok, mayor = pcall(function() return ply:isMayor() end)
 	if not ok then
-		print("[MaxHUD] /laws: ply:isMayor() errored: " .. tostring(mayor))
-		DarkRP.notify(ply, 1, 4, "Something went wrong checking your job -- see server console.")
-		return ""
+		print("[MaxHUD] ply:isMayor() errored: " .. tostring(mayor))
+		return false, "Something went wrong checking your job -- see server console."
 	end
 
 	if not mayor then
-		DarkRP.notify(ply, 1, 4, "Only the Mayor can set the laws.")
+		return false, "Only the Mayor can do that."
+	end
+
+	return true
+end
+
+local function addLawCommand(ply, args)
+	local ok, err = checkIsMayor(ply)
+	if not ok then
+		DarkRP.notify(ply, 1, 4, err)
 		return ""
 	end
 
-	MaxHUD.LawsText = (args ~= "" and args) or Config.defaultLaws
+	if not args or args == "" then
+		DarkRP.notify(ply, 1, 4, "Usage: /addlaw <text>")
+		return ""
+	end
+
+	table.insert(MaxHUD.AdditionalLaws, args)
 	broadcastLaws()
 
-	DarkRP.notify(ply, 0, 4, "The laws have been updated.")
+	DarkRP.notify(ply, 0, 4, "Added law #" .. (#Config.defaultLawsList + #MaxHUD.AdditionalLaws) .. ".")
 	return ""
 end
 
--- Both names do the exact same thing -- registered as two separate
--- commands (not one aliased to the other) since a chat message that
--- didn't match either previously just silently did nothing, which is
--- what looked like "doesn't update live".
---
+local function removeLawCommand(ply)
+	local ok, err = checkIsMayor(ply)
+	if not ok then
+		DarkRP.notify(ply, 1, 4, err)
+		return ""
+	end
+
+	if #MaxHUD.AdditionalLaws == 0 then
+		DarkRP.notify(ply, 1, 4, "There are no additional laws to remove.")
+		return ""
+	end
+
+	table.remove(MaxHUD.AdditionalLaws)
+	broadcastLaws()
+
+	DarkRP.notify(ply, 0, 4, "Removed the most recently added law.")
+	return ""
+end
+
+local function lawsResetCommand(ply)
+	local ok, err = checkIsMayor(ply)
+	if not ok then
+		DarkRP.notify(ply, 1, 4, err)
+		return ""
+	end
+
+	resetLaws()
+
+	DarkRP.notify(ply, 0, 4, "The laws have been reset to the default three.")
+	return ""
+end
+
 -- Deferred to the next tick, not run inline at file-load time: addon load
 -- order isn't guaranteed relative to the rest of DarkRP finishing its own
 -- setup (the same class of issue that made SAM command registration in
 -- the levelsystem addon need the same fix). By the start of the next tick
 -- every addon's initial files have finished loading either way.
 timer.Simple(0, function()
-	DarkRP.defineChatCommand("laws", setLawsCommand)
-	DarkRP.defineChatCommand("addlaw", setLawsCommand)
-	print("[MaxHUD] Registered /laws and /addlaw commands.")
+	DarkRP.defineChatCommand("laws", lawsResetCommand)
+	DarkRP.defineChatCommand("addlaw", addLawCommand)
+	DarkRP.defineChatCommand("removelaw", removeLawCommand)
+	print("[MaxHUD] Registered /laws, /addlaw, /removelaw commands.")
 end)
 
--- Reset to the default laws the moment the current Mayor dies.
+-- Reset to the permanent three laws the moment the current Mayor dies.
 hook.Add("PlayerDeath", "maxhud_laws_reset_on_mayor_death", function(victim)
 	if not IsValid(victim) or not victim.isMayor or not victim:isMayor() then return end
-
-	MaxHUD.LawsText = Config.defaultLaws
-	broadcastLaws()
+	resetLaws()
 end)
 
 hook.Add("PlayerInitialSpawn", "maxhud_laws_sync", function(ply)

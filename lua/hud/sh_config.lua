@@ -65,9 +65,17 @@ Config.colors.lockdownGlowHigh = Color(255, 60, 60)
 Config.iconBadges.agenda = Color(140, 40, 40)
 Config.colors.lawsBody = Color(0, 0, 0, 160)
 
--- Shown until a Mayor sets their own with /laws <text>, and restored
--- whenever the current Mayor dies.
-Config.defaultLaws = "1. Roleplay is mandatory at all times.\n2. RDM, NLR, and prop abuse are not allowed.\n3. Follow staff instructions."
+-- Permanent, always-numbered-first laws -- never editable or removable
+-- by /addlaw or /removelaw. The Mayor's own additional laws (sv_laws.lua's
+-- MaxHUD.AdditionalLaws) are appended after these, numbered starting at
+-- #4; /laws (no args) clears the additional ones and returns to just
+-- this base three, same as what happens automatically when the current
+-- Mayor dies.
+Config.defaultLawsList = {
+	"Murder is illegal.",
+	"Theft/stealing is illegal.",
+	"Owning or operating the production of drugs is illegal.",
+}
 
 --------------------------------------------------------------------------------
 -- Icons -- from the "MAX Assets" workshop addon, which nests them under

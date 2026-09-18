@@ -5,7 +5,13 @@
 
 local Config = MaxHUD.Config
 
-MaxHUD.LawsText = Config.defaultLaws
+-- Placeholder shown only until the real synced text arrives from the
+-- server (within ~1s of spawning) -- same numbering sv_laws.lua builds.
+local defaultLines = {}
+for i, law in ipairs(Config.defaultLawsList) do
+	defaultLines[i] = i .. ". " .. law
+end
+MaxHUD.LawsText = table.concat(defaultLines, "\n")
 
 net.Receive("maxhud_laws", function()
 	MaxHUD.LawsText = net.ReadString()
