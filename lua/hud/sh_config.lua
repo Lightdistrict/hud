@@ -74,19 +74,6 @@ Config.icons = {
 	clock = "icon_clock2.png",
 }
 
---------------------------------------------------------------------------------
--- Hunger -- this addon owns a minimal hunger stat since nothing else on the
--- server tracks one. It decays passively over time; `MaxHUD.AddHunger(ply,
--- amount)` (sv_hunger.lua) is exposed for a food item/entity to hook into
--- later. Resets to full on spawn.
---------------------------------------------------------------------------------
-
-Config.hunger = {
-	max = 100,
-	decayPerTick = 1,   -- hunger lost every `tickInterval` seconds
-	tickInterval = 30,  -- so by default it takes 100/1 * 30s = 50 minutes to starve
-}
-
 -- Armor doesn't have a real "max armor" getter on the base player -- 100 is
 -- the vanilla HL2 cap. Bump this if a skill/job effect can push it higher so
 -- the bar doesn't visually cap out early.

@@ -20,11 +20,11 @@ Uses `icon_health`, `icon_armor`, `icon_hunger`, `icon_leveling`, `icon_money`, 
 
 ## Hunger
 
-Nothing else on the server tracks hunger, so this addon owns a minimal version of it: starts full on spawn, decays passively over time (`Config.hunger.decayPerTick` / `tickInterval` in `sh_config.lua`), and is in-memory only (not persisted). `MaxHUD.AddHunger(ply, amount)` is exposed server-side for a food item/entity to hook into later, if you want eating to actually restore it.
+The hunger chip reads DarkRP's own real "Energy" DarkRP var (`ply:getDarkRPVar("Energy")`) -- decayed, starvation-damaged, and restored by eating food, all handled by DarkRP's built-in `hungermod` module (see the `darkrp_modification` config for enabling it and the Chef job). This addon doesn't track hunger itself; there's nothing to configure here.
 
 ## Configuration
 
-Everything tunable lives in `lua/hud/sh_config.lua`: colors, icon filenames/folder, hunger decay rate, armor's display max (100 by default, matching vanilla HL2's cap), and the pay-interval fallback used to compute the hourly salary figure (reads DarkRP's real `GAMEMODE.Config.paydelay` when available).
+Everything tunable lives in `lua/hud/sh_config.lua`: colors, icon filenames/folder, armor's display max (100 by default, matching vanilla HL2's cap), and the pay-interval fallback used to compute the hourly salary figure (reads DarkRP's real `GAMEMODE.Config.paydelay` when available).
 
 ## Notes
 

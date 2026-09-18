@@ -217,8 +217,11 @@ hook.Add("HUDPaint", "maxhud_draw", function()
 	x = x + drawBarChip(x, 0, ply:Health(), ply:GetMaxHealth(), Config.colors.health, "health") + CHIP_GAP
 	x = x + drawBarChip(x, 0, ply:Armor(), Config.armorMax, Config.colors.armor, "armor", nil, nil, true) + CHIP_GAP
 
-	local hungerPct = math.Round(((MaxHUD.MyHunger or Config.hunger.max) / Config.hunger.max) * 100)
-	x = x + drawBarChip(x, 0, hungerPct, 100, Config.colors.hunger, "hunger", nil, "%") + CHIP_GAP
+	-- Real DarkRP hunger -- the "Energy" DarkRP var, registered and decayed
+	-- by DarkRP's own hungermod module (net.WriteFloat/ReadFloat, already
+	-- networked to the owning client same as money/salary).
+	local energy = math.Round(ply:getDarkRPVar("Energy") or 100)
+	x = x + drawBarChip(x, 0, energy, 100, Config.colors.hunger, "hunger", nil, "%") + CHIP_GAP
 
 	if LevelSystem and LevelSystem.MyData then
 		local d = LevelSystem.MyData
