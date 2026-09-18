@@ -33,4 +33,6 @@ MaxHUD.Fonts = {
 	level = font("level", { font = "Montserrat", size = math.Round(baseLabelSize * 1.25), weight = 600, antialias = true }),
 	time = font("time", { font = "Montserrat", size = math.Round(baseLabelSize * 1.15), weight = 600, antialias = true }),
 	date = font("date", { font = "Montserrat", size = math.Round(baseLabelSize * 1.20), weight = 600, antialias = true }),
+	job = font("job", { font = "Montserrat", size = baseLabelSize, weight = 600, antialias = true }),
+	brand = font("brand", { font = "Montserrat", size = baseLabelSize, weight = 700, antialias = true }),
 }

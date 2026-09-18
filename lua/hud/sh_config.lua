@@ -10,24 +10,40 @@ Config.colors = {
 	armor = Color(70, 130, 220),
 	hunger = Color(230, 150, 60),
 	accent = Color(80, 200, 255),
-	background = Color(0, 0, 0, 180),
-	text = Color(255, 255, 255),
+
+	-- The one shared translucent strip spanning the full screen width.
+	strip = Color(0, 0, 0, 90),
+	-- Each individual chip sitting on top of the strip -- more opaque than
+	-- the strip itself so chips read as distinct "boxes".
+	chip = Color(20, 20, 22, 170),
+	-- The lighter badge drawn behind every icon, inside its chip.
+	iconBadge = Color(255, 255, 255, 40),
+	-- Off-white (not pure white) for chip text, per spec -- icons stay pure
+	-- white (color_white), text is slightly muted.
+	text = Color(225, 225, 225),
 }
 
 --------------------------------------------------------------------------------
 -- Icons -- from the "MAX Assets" workshop addon, which nests them under
 -- materials/hud/icons/ (max_assets/materials/hud/icons/icon_health.png etc).
+--
+-- `job` -> icon_salary.png and `hourlySalary` -> icon_dollar.png is exactly
+-- what was specified (the job chip uses the file named icon_salary, and the
+-- separate hourly-salary chip uses icon_dollar) -- looks backwards, but
+-- that's what's deployed; swap the two filenames here if it turns out to be
+-- a mix-up once you see it in-game.
 --------------------------------------------------------------------------------
 
 Config.iconFolder = "hud/icons/"
 
 Config.icons = {
+	job = "icon_salary.png",
 	health = "icon_health.png",
 	armor = "icon_armor.png",
 	hunger = "icon_hunger.png",
-	salary = "icon_salary.png",
-	money = "icon_money.png",
 	leveling = "icon_leveling.png",
+	hourlySalary = "icon_dollar.png",
+	money = "icon_money.png",
 	clock = "icon_clock2.png",
 }
 
