@@ -77,6 +77,12 @@ Config.defaultLawsList = {
 	"Owning or operating the production of drugs is illegal.",
 }
 
+-- /addlaw limits -- maxLaws is the total including the permanent three
+-- above (so at most maxLaws - #defaultLawsList additional laws), and
+-- maxLawLength caps each /addlaw <text>'s character count.
+Config.maxLaws = 8
+Config.maxLawLength = 24
+
 --------------------------------------------------------------------------------
 -- Icons -- from the "MAX Assets" workshop addon, which nests them under
 -- materials/hud/icons/ (max_assets/materials/hud/icons/icon_health.png etc).

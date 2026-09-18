@@ -91,6 +91,16 @@ local function addLawCommand(ply, args)
 		return ""
 	end
 
+	if #Config.defaultLawsList + #MaxHUD.AdditionalLaws >= Config.maxLaws then
+		DarkRP.notify(ply, 1, 4, "The laws are full (max " .. Config.maxLaws .. ") -- remove one first with /removelaw.")
+		return ""
+	end
+
+	if #args > Config.maxLawLength then
+		DarkRP.notify(ply, 1, 4, "That law is too long (max " .. Config.maxLawLength .. " characters).")
+		return ""
+	end
+
 	table.insert(MaxHUD.AdditionalLaws, args)
 	broadcastLaws()
 
