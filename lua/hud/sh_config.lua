@@ -50,6 +50,15 @@ Config.chipBackgrounds = {
 	clock = Color(76, 77, 76),
 }
 
+-- Status icons (wanted/arrested/license) shown to the right of the
+-- leveling bar, and center-strip alert icons (lockdown, etc). Plain
+-- square icon chips, no bar/text -- just an on/off badge.
+Config.statusIconBg = Color(40, 42, 46, 200)
+
+-- The Laws board (mayor-managed, visible to everyone).
+Config.iconBadges.agenda = Color(140, 40, 40)
+Config.colors.lawsBody = Color(90, 30, 30, 200)
+
 --------------------------------------------------------------------------------
 -- Icons -- from the "MAX Assets" workshop addon, which nests them under
 -- materials/hud/icons/ (max_assets/materials/hud/icons/icon_health.png etc).
@@ -72,6 +81,11 @@ Config.icons = {
 	hourlySalary = "icon_dollar.png",
 	money = "icon_money.png",
 	clock = "icon_clock2.png",
+	wanted = "icon_wanted.png",
+	arrested = "icon_arrested.png",
+	license = "icon_license.png",
+	lockdown = "icon_lockdown.png",
+	agenda = "icon_agenda.png",
 }
 
 -- Armor doesn't have a real "max armor" getter on the base player -- 100 is

@@ -25,6 +25,8 @@ end
 include_shared("hud/sh_config.lua")
 
 include_server("hud/sv_resources.lua")
+include_server("hud/sv_laws.lua")
 
 include_client("hud/cl_fonts.lua")
 include_client("hud/cl_hud.lua")
+include_client("hud/cl_laws.lua")
