@@ -57,17 +57,23 @@ end)
 local doorAnchors = {}
 
 --[[
-- Computes (and caches) the world position/angle for a door's floating
-- text, positioned above the door's own local-space origin -- WorldSpaceAABB
-- turned out to return degenerate bounds on some door collision models
-- (nothing rendered at all), so this goes back to the local-OBB approach,
-- just with a lower height offset than before.
+- Computes (and caches) two local anchors for a door's floating text, one
+- sitting just inside each physical face -- WorldSpaceAABB turned out to
+- return degenerate bounds on some door collision models (nothing rendered
+- at all), so this stays on the local-OBB approach.
 -
-- @return Vector, Angle
+- A single shared anchor (just flipping the angle to face whichever side
+- the player is on) doesn't work for drawing both sides at once: that
+- point sits right at one face, so from the opposite side the entire
+- door's thickness lies between the camera and the text, and the door's
+- own solid geometry occludes it. Each face needs its own point placed
+- near *that* face instead.
+-
+- @return table -- { front = {pos=, ang=}, back = {pos=, ang=} }, all local
 ]]
 local function getAnchor(door)
 	local anchor = doorAnchors[door]
-	if anchor then return anchor.lpos, anchor.lang end
+	if anchor then return anchor end
 
 	local dimens = door:OBBMaxs() - door:OBBMins()
 	local center = door:OBBCenter()
@@ -84,15 +90,22 @@ local function getAnchor(door)
 	norm[axis] = 1
 	local lang = Angle(0, norm:Angle().y + 90, 90)
 
-	local lpos
-	if door:GetClass() == "prop_door_rotating" then
-		lpos = Vector(center.x, center.y, 25) + lang:Up() * (thinnest / 6)
-	else
-		lpos = center + Vector(0, 0, 15) + lang:Up() * ((thinnest / 2) - 0.1)
-	end
+	local heightOffset = door:GetClass() == "prop_door_rotating" and 25 or 15
+	local base = Vector(center.x, center.y, center.z) + Vector(0, 0, heightOffset)
+	-- Pulled in from the true face by a small margin so the text doesn't
+	-- poke through the door frame/trim, without going deep enough to be
+	-- occluded by the door's own thickness from that side.
+	local faceOffset = math.max((thinnest / 2) - 1, thinnest / 4)
 
-	doorAnchors[door] = { lpos = lpos, lang = lang }
-	return lpos, lang
+	local backAng = Angle(lang.p, lang.y, lang.r)
+	backAng:RotateAroundAxis(backAng:Right(), 180)
+
+	anchor = {
+		front = { pos = base + lang:Up() * faceOffset, ang = lang },
+		back = { pos = base - lang:Up() * faceOffset, ang = backAng },
+	}
+	doorAnchors[door] = anchor
+	return anchor
 end
 
 hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_doorinfo", function()
@@ -104,9 +117,7 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_doorinfo", function()
 		local dist = door:GetPos():Distance(lp:GetShootPos())
 		if dist > DRAW_DISTANCE then continue end
 
-		local lpos, lang = getAnchor(door)
-		local pos = door:LocalToWorld(lpos)
-		local ang = door:LocalToWorldAngles(lang)
+		local anchor = getAnchor(door)
 		local fadeMul = math.Clamp(1 - (dist / DRAW_DISTANCE), 0, 1)
 
 		local owner = door:getDoorOwner()
@@ -136,15 +147,14 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_doorinfo", function()
 			end
 		end
 
-		-- Drawn on both sides of the door -- once facing each way -- rather
-		-- than only the side the player happens to be standing on.
-		cam.Start3D2D(pos, ang, 0.05)
+		-- Drawn on both faces of the door -- each at its own point near that
+		-- physical face (see getAnchor) so neither is occluded by the
+		-- door's own thickness from the other side.
+		cam.Start3D2D(door:LocalToWorld(anchor.front.pos), door:LocalToWorldAngles(anchor.front.ang), 0.05)
 			drawFace()
 		cam.End3D2D()
 
-		local backAng = Angle(ang.p, ang.y, ang.r)
-		backAng:RotateAroundAxis(backAng:Right(), 180)
-		cam.Start3D2D(pos, backAng, 0.05)
+		cam.Start3D2D(door:LocalToWorld(anchor.back.pos), door:LocalToWorldAngles(anchor.back.ang), 0.05)
 			drawFace()
 		cam.End3D2D()
 	end
