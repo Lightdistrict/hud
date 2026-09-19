@@ -54,31 +54,24 @@ hook.Add("HUDDrawDoorData", "maxhud_hide_default_doorinfo", function(door)
 	if isOwnableDoor(door) then return true end
 end)
 
+local doorAnchors = {}
+
 --[[
-- Computes the world position + facing angle for a door's floating text.
--
-- Position comes from the door's real WORLD-space bounding box (not local
-- OBB Z), placed at 65% of its actual world height -- this is what makes
-- it land in the same relative spot (roughly head height, centered) on
-- every door regardless of that door's model/scale, instead of a fixed
-- local-space offset that only looks right on whichever model it was
-- tuned against.
--
-- The facing direction still comes from the door's local OBB (the
-- thinnest of its 3 local dimensions is the face-normal axis) since that's
-- pure rotation and unaffected by world scale.
+- Computes (and caches) the world position/angle for a door's floating
+- text, positioned above the door's own local-space origin -- WorldSpaceAABB
+- turned out to return degenerate bounds on some door collision models
+- (nothing rendered at all), so this goes back to the local-OBB approach,
+- just with a lower height offset than before.
 -
 - @return Vector, Angle
 ]]
 local function getAnchor(door)
-	local worldMins, worldMaxs = door:WorldSpaceAABB()
-	local pos = Vector(
-		(worldMins.x + worldMaxs.x) / 2,
-		(worldMins.y + worldMaxs.y) / 2,
-		worldMins.z + (worldMaxs.z - worldMins.z) * 0.65
-	)
+	local anchor = doorAnchors[door]
+	if anchor then return anchor.lpos, anchor.lang end
 
 	local dimens = door:OBBMaxs() - door:OBBMins()
+	local center = door:OBBCenter()
+
 	local thinnest, axis = nil, 1
 	for i = 1, 3 do
 		if not thinnest or dimens[i] <= thinnest then
@@ -90,9 +83,16 @@ local function getAnchor(door)
 	local norm = Vector()
 	norm[axis] = 1
 	local lang = Angle(0, norm:Angle().y + 90, 90)
-	local ang = door:LocalToWorldAngles(lang)
 
-	return pos, ang
+	local lpos
+	if door:GetClass() == "prop_door_rotating" then
+		lpos = Vector(center.x, center.y, 25) + lang:Up() * (thinnest / 6)
+	else
+		lpos = center + Vector(0, 0, 15) + lang:Up() * ((thinnest / 2) - 0.1)
+	end
+
+	doorAnchors[door] = { lpos = lpos, lang = lang }
+	return lpos, lang
 end
 
 hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_doorinfo", function()
@@ -104,7 +104,9 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_doorinfo", function()
 		local dist = door:GetPos():Distance(lp:GetShootPos())
 		if dist > DRAW_DISTANCE then continue end
 
-		local pos, ang = getAnchor(door)
+		local lpos, lang = getAnchor(door)
+		local pos = door:LocalToWorld(lpos)
+		local ang = door:LocalToWorldAngles(lang)
 		local fadeMul = math.Clamp(1 - (dist / DRAW_DISTANCE), 0, 1)
 
 		local owner = door:getDoorOwner()
@@ -146,4 +148,8 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_doorinfo", function()
 			drawFace()
 		cam.End3D2D()
 	end
+end)
+
+hook.Add("EntityRemoved", "maxhud_doorinfo_cleanup", function(ent)
+	doorAnchors[ent] = nil
 end)
