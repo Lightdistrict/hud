@@ -39,12 +39,15 @@ end)
 -- this one player sees. Used to hide the laws board and the police wanted
 -- count row while either is open, since both otherwise visually overlap
 -- with the F4/scoreboard panels.
-local scoreboardOpen = false
-hook.Add("ScoreboardShow", "maxhud_scoreboard_open", function() scoreboardOpen = true end)
-hook.Add("ScoreboardHide", "maxhud_scoreboard_open", function() scoreboardOpen = false end)
-
+--
+-- Deliberately NOT using the "ScoreboardShow"/"ScoreboardHide" hooks here:
+-- this server's own scoreboard addon registers those same hook names and
+-- returns `true` from its handler, and hook.Call stops at the first
+-- handler that returns non-nil (iteration order isn't guaranteed) -- so a
+-- second hook.Add listener for the same event can silently never run.
+-- Checking the real Tab key state directly sidesteps that race entirely.
 function MaxHUD.IsBigUIOpen()
-	return scoreboardOpen or (F4menu and IsValid(F4menu.frame) and F4menu.frame:IsVisible())
+	return input.IsKeyDown(KEY_TAB) or (F4menu and IsValid(F4menu.frame) and F4menu.frame:IsVisible())
 end
 
 local BAR_H = math.Round(22 * 1.4)
