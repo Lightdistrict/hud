@@ -75,8 +75,15 @@ local function getAnchor(door)
 	local anchor = doorAnchors[door]
 	if anchor then return anchor end
 
-	local dimens = door:OBBMaxs() - door:OBBMins()
-	local center = door:OBBCenter()
+	-- The collision hull (what's actually solid) rather than the render
+	-- bounding box: some door models bake hinges/frame trim into the
+	-- render mesh, which inflates OBBMins/OBBMaxs well past the actual
+	-- door leaf and threw the thickness estimate off per-model -- text
+	-- ended up clipping into the door on some, floating far off it on
+	-- others. The collision bounds track the real physical door instead.
+	local mins, maxs = door:GetCollisionBounds()
+	local dimens = maxs - mins
+	local center = (mins + maxs) / 2
 
 	local thinnest, axis = nil, 1
 	for i = 1, 3 do
@@ -92,10 +99,11 @@ local function getAnchor(door)
 
 	local heightOffset = door:GetClass() == "prop_door_rotating" and 25 or 15
 	local base = Vector(center.x, center.y, center.z) + Vector(0, 0, heightOffset)
-	-- Pulled in from the true face by a small margin so the text doesn't
-	-- poke through the door frame/trim, without going deep enough to be
-	-- occluded by the door's own thickness from that side.
-	local faceOffset = math.max((thinnest / 2) - 1, thinnest / 4)
+	-- Half the real thickness, minus a small fixed clearance so the text
+	-- sits just proud of the surface instead of clipping into it -- but
+	-- never less than 1 unit out, so very thin doors don't end up with the
+	-- text buried at the center plane.
+	local faceOffset = math.max((thinnest / 2) - 0.75, 1)
 
 	local backAng = Angle(lang.p, lang.y, lang.r)
 	backAng:RotateAroundAxis(backAng:Right(), 180)
