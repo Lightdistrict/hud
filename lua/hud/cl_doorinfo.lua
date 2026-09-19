@@ -75,20 +75,24 @@ local function getAnchor(door)
 	local anchor = doorAnchors[door]
 	if anchor then return anchor end
 
-	-- The collision hull (what's actually solid) rather than the render
-	-- bounding box: some door models bake hinges/frame trim into the
-	-- render mesh, which inflates OBBMins/OBBMaxs well past the actual
-	-- door leaf and threw the thickness estimate off per-model -- text
-	-- ended up clipping into the door on some, floating far off it on
-	-- others. The collision bounds track the real physical door instead.
-	local mins, maxs = door:GetCollisionBounds()
-	local dimens = maxs - mins
-	local center = (mins + maxs) / 2
+	-- Neither bounding box alone is reliable across every door model: the
+	-- render box (OBBMins/OBBMaxs) bakes in hinges/frame trim on some
+	-- models, well past the real leaf, while the collision box is a
+	-- simplified approximation on others (glass storefront doors in
+	-- particular) that's noticeably thicker than the actual visual
+	-- surface. Taking whichever of the two is thinner, then clamping the
+	-- final offset to a small fixed range, keeps it from drifting far off
+	-- the surface even when one of the two estimates is inflated.
+	local rMins, rMaxs = door:OBBMins(), door:OBBMaxs()
+	local cMins, cMaxs = door:GetCollisionBounds()
+	local rDimens, cDimens = rMaxs - rMins, cMaxs - cMins
+	local center = (rMins + rMaxs) / 2
 
 	local thinnest, axis = nil, 1
 	for i = 1, 3 do
-		if not thinnest or dimens[i] <= thinnest then
-			thinnest = dimens[i]
+		local d = math.min(rDimens[i], cDimens[i])
+		if not thinnest or d <= thinnest then
+			thinnest = d
 			axis = i
 		end
 	end
@@ -99,11 +103,9 @@ local function getAnchor(door)
 
 	local heightOffset = door:GetClass() == "prop_door_rotating" and 25 or 15
 	local base = Vector(center.x, center.y, center.z) + Vector(0, 0, heightOffset)
-	-- Half the real thickness, minus a small fixed clearance so the text
-	-- sits just proud of the surface instead of clipping into it -- but
-	-- never less than 1 unit out, so very thin doors don't end up with the
-	-- text buried at the center plane.
-	local faceOffset = math.max((thinnest / 2) - 0.75, 1)
+	-- Just proud of the surface without drifting far off it even if the
+	-- thickness estimate above is still a bit inflated on some model.
+	local faceOffset = math.Clamp(thinnest / 2, 1, 3)
 
 	local backAng = Angle(lang.p, lang.y, lang.r)
 	backAng:RotateAroundAxis(backAng:Right(), 180)
