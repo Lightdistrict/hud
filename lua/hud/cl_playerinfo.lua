@@ -21,7 +21,8 @@ local Config = MaxHUD.Config
 -- something that changes their own look.
 
 local NAMETAG_RANGE = 700
-local STATUS_RANGE = 2000
+local STATUS_RANGE = 1200
+local MAX_VISIBLE = 10
 local SCALE = 0.05
 
 --[[
@@ -40,6 +41,11 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_playerinfo", function()
 	-- position, so it's computed once per frame rather than per player.
 	local billboardAng = Angle(0, lp:EyeAngles().y - 90, 90)
 
+	-- Both wanted/arrested and the nametag now share the same hard cap
+	-- (STATUS_RANGE) -- nothing draws unbounded anymore. On top of that,
+	-- only the MAX_VISIBLE closest candidates actually get drawn, so a
+	-- crowd doesn't turn into a wall of overlapping text.
+	local candidates = {}
 	for _, ply in ipairs(player.GetAll()) do
 		if ply == lp or not IsValid(ply) or not ply:Alive() then continue end
 
@@ -49,8 +55,16 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_playerinfo", function()
 		local wanted = ply:isWanted()
 		local arrested = ply:isArrested()
 		local showNametag = dist <= NAMETAG_RANGE
-
 		if not showNametag and not wanted and not arrested then continue end
+
+		table.insert(candidates, { ply = ply, dist = dist, wanted = wanted, arrested = arrested, showNametag = showNametag })
+	end
+
+	table.sort(candidates, function(a, b) return a.dist < b.dist end)
+
+	for i = 1, math.min(#candidates, MAX_VISIBLE) do
+		local c = candidates[i]
+		local ply, dist, wanted, arrested, showNametag = c.ply, c.dist, c.wanted, c.arrested, c.showNametag
 
 		local pos = ply:EyePos() + Vector(0, 0, 14)
 		local fadeMul = math.Clamp(1 - (dist / STATUS_RANGE), 0.3, 1)
