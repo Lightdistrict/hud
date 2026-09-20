@@ -1,7 +1,7 @@
 -- F2 door menu, replacing the old default DarkRP-adjacent "Door options"
--- popup with something matching the rest of the MAX UI: a dark header,
--- red close button, and flat muted-gray option rows, Montserrat. All
--- actions are the real DarkRP chat commands
+-- popup with something matching the rest of the MAX UI (dark panels,
+-- accent color, Montserrat, light 1px outline -- same recipe as the
+-- Skills tab). All actions are the real DarkRP chat commands
 -- (gamemode/modules/doorsystem/sv_doors.lua) run silently via the "say"
 -- concommand -- DarkRP's own chat handler swallows a recognized command
 -- and never echoes it to chat (modules/chat/sv_chat.lua returns "" once
@@ -43,16 +43,13 @@ do
 	end
 end
 
-local COLOR_BG = Color(18, 18, 18, 250)
-local COLOR_PANEL = Color(105, 98, 91, 235)
-local COLOR_PANEL_HOVER = Color(125, 117, 109, 250)
-local COLOR_BORDER = Color(0, 0, 0, 130)
+local COLOR_BG = Color(12, 12, 15, 245)
+local COLOR_PANEL = Color(0, 0, 0, 225)
+local COLOR_PANEL_HOVER = Color(0, 0, 0, 255)
+local COLOR_OUTLINE = Color(255, 255, 255, 25)
 local COLOR_CLOSE = Color(200, 60, 60)
 local COLOR_CLOSE_HOVER = Color(230, 80, 80)
 
--- weight = 400 -- see cl_fonts.lua: the bundled Montserrat TTF is
--- regular-only, so a higher weight here just fakes bold via synthetic
--- thickening instead of using a real bold cut, which looked too chunky.
 local FONT_TITLE = MaxHUD.font("doormenu_title", { font = "Montserrat", size = 18, weight = 400, antialias = true })
 local FONT_BUTTON = MaxHUD.font("doormenu_button", { font = "Montserrat", size = 16, weight = 400, antialias = true })
 
@@ -73,11 +70,13 @@ hook.Add("InitPostEntity", "maxhud_doormenu_privs", function()
 end)
 
 --[[
-- Draws a rounded panel with a thin dark border.
+- Draws a rounded panel with a faint 1px light outline -- same recipe as
+- the Skills tab (levelsystem/cl_skills_tab.lua) so this reads as part of
+- the same UI family.
 ]]
 local function drawPanel(w, h, fillColor, radius)
 	radius = radius or 8
-	draw.RoundedBox(radius, 0, 0, w, h, COLOR_BORDER)
+	draw.RoundedBox(radius, 0, 0, w, h, COLOR_OUTLINE)
 	draw.RoundedBox(radius, 1, 1, w - 2, h - 2, fillColor)
 end
 
@@ -106,8 +105,9 @@ local function addButton(parent, label, onClick)
 	btn:SetPos(PAD, y)
 	btn:SetSize(MENU_W - PAD * 2, BTN_H)
 	btn.Paint = function(self, w, h)
-		drawPanel(w, h, self:IsHovered() and COLOR_PANEL_HOVER or COLOR_PANEL, 4)
-		draw.SimpleText(label, FONT_BUTTON, w / 2, h / 2, Config.colors.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+		drawPanel(w, h, self:IsHovered() and COLOR_PANEL_HOVER or COLOR_PANEL, 6)
+		local textColor = self:IsHovered() and Config.colors.accent or Config.colors.text
+		draw.SimpleText(label, FONT_BUTTON, w / 2, h / 2, textColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end
 	btn.DoClick = function()
 		surface.PlaySound("buttons/button15.wav")
@@ -154,10 +154,17 @@ local function openGroupMenu(door)
 end
 
 --[[
-- A small submenu with one text field + confirm button, next to the main
-- frame -- used for "Add Owner"/"Remove Owner" (a player name) and
-- "Set Door Title" (free text). Reuses the `groupFrame` slot since only
-- one submenu is ever open at a time.
+- A small submenu with one free-text field + confirm button, next to the
+- main frame -- used for "Set Door Title". Reuses the `groupFrame` slot
+- since only one submenu is ever open at a time.
+-
+- The text field is a plain, un-skinned DTextEntry nested inside its own
+- background DPanel (drawn as a sibling, not by overriding the entry's
+- own Paint) -- an earlier version replaced DTextEntry:Paint entirely to
+- draw our background inline, which broke clicking into it to place the
+- caret/type. Docking it to fill a separate background panel keeps the
+- entry itself completely stock so its normal click/focus/typing
+- behavior is untouched.
 -
 - @param string title
 - @param string placeholder
@@ -181,15 +188,18 @@ local function openTextPrompt(title, placeholder, onConfirm)
 		draw.SimpleText(title, FONT_BUTTON, PAD, PAD, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
 	end
 
-	local entry = vgui.Create("DTextEntry", groupFrame)
-	entry:SetPos(PAD, entryY)
-	entry:SetSize(MENU_W - PAD * 2, entryH)
+	local entryBg = vgui.Create("DPanel", groupFrame)
+	entryBg:SetPos(PAD, entryY)
+	entryBg:SetSize(MENU_W - PAD * 2, entryH)
+	entryBg.Paint = function(self, w, h) drawPanel(w, h, COLOR_PANEL, 4) end
+
+	local entry = vgui.Create("DTextEntry", entryBg)
+	entry:Dock(FILL)
+	entry:DockMargin(8, 0, 8, 0)
 	entry:SetPlaceholderText(placeholder)
 	entry:SetPaintBackground(false)
-	entry.Paint = function(self, w, h)
-		drawPanel(w, h, COLOR_PANEL, 4)
-		derma.SkinHook("Paint", "TextEntry", self, w, h)
-	end
+	entry:SetFont(FONT_BUTTON)
+	entry:SetTextColor(Config.colors.text)
 	entry:RequestFocus()
 
 	local function confirm()
@@ -202,6 +212,49 @@ local function openTextPrompt(title, placeholder, onConfirm)
 
 	groupFrame.nextY = buttonY
 	addButton(groupFrame, "Confirm", confirm)
+end
+
+--[[
+- A submenu listing every currently-connected player (excluding
+- yourself) -- used for "Add Owner"/"Remove Owner" so you pick a real
+- online player instead of typing their name.
+-
+- @param string title
+- @param function onPick -- function(player) end
+]]
+local function openPlayerListMenu(title, onPick)
+	if IsValid(groupFrame) then groupFrame:Remove() end
+
+	local players = {}
+	for _, p in ipairs(player.GetAll()) do
+		if p ~= LocalPlayer() then table.insert(players, p) end
+	end
+	table.sort(players, function(a, b) return a:Nick() < b:Nick() end)
+
+	local titleH = 24
+	local rowCount = math.max(#players, 1)
+	local h = PAD + titleH + rowCount * (BTN_H + BTN_GAP) - BTN_GAP + PAD
+
+	groupFrame = vgui.Create("DPanel")
+	groupFrame:SetSize(MENU_W, h)
+	groupFrame:SetPos(mainFrame:GetX() + mainFrame:GetWide() + 12, mainFrame:GetY())
+	groupFrame:MakePopup()
+	groupFrame:SetKeyboardInputEnabled(false)
+	groupFrame.Paint = function(self, w, h)
+		drawPanel(w, h, COLOR_BG, 10)
+		draw.SimpleText(title, FONT_BUTTON, PAD, PAD, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+	end
+	groupFrame.nextY = PAD + titleH
+
+	if #players == 0 then
+		addButton(groupFrame, "No other players online", function() end)
+	end
+	for _, p in ipairs(players) do
+		addButton(groupFrame, p:Nick(), function()
+			onPick(p)
+			closeAll()
+		end)
+	end
 end
 
 local function buildMenu(door)
@@ -264,13 +317,13 @@ local function buildMenu(door)
 
 	if mine then
 		addButton(mainFrame, "Add Owner", function()
-			openTextPrompt("Add Owner", "Player name", function(name)
-				sendDoorCommand("addowner " .. name)
+			openPlayerListMenu("Add Owner", function(target)
+				sendDoorCommand("addowner " .. target:Nick())
 			end)
 		end)
 		addButton(mainFrame, "Remove Owner", function()
-			openTextPrompt("Remove Owner", "Player name", function(name)
-				sendDoorCommand("removeowner " .. name)
+			openPlayerListMenu("Remove Owner", function(target)
+				sendDoorCommand("removeowner " .. target:Nick())
 			end)
 		end)
 		addButton(mainFrame, "Set Door Title", function()
