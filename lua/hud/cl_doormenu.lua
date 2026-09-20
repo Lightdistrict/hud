@@ -18,19 +18,28 @@ local Config = MaxHUD.Config
 -- has access to -- not DarkRP core, confirmed against the actual gamemode
 -- source) still pops its own plain blue "Door options" DFrame on F2
 -- alongside this one. Since its source can't be edited directly, this
--- patches the stock DFrame:SetTitle method (used by every DFrame in the
--- game, including ours if we ever used one -- we don't, ours is a DPanel
--- with its own hand-drawn title) to auto-close any frame titled exactly
--- "Door options" the instant that title is set, which is how vgui
--- panels normally get their title assigned right after creation.
+-- wraps vgui.Create itself: every time a DFrame is actually created, its
+-- own SetTitle is patched (instance-level, not the shared class table --
+-- vgui.GetControlTable("DFrame") isn't reliably populated yet this early
+-- in client load, which is what threw "attempt to index a nil value"
+-- here before) to auto-remove it the instant its title is set to
+-- exactly "Door options", which is how vgui panels normally get their
+-- title assigned right after creation. Doesn't touch our own menu (a
+-- DPanel with a hand-drawn title, never calls DFrame:SetTitle).
 do
-	local frameTable = vgui.GetControlTable("DFrame")
-	local baseSetTitle = frameTable.SetTitle
-	frameTable.SetTitle = function(self, title, ...)
-		baseSetTitle(self, title, ...)
-		if title == "Door options" then
-			self:Remove()
+	local baseVguiCreate = vgui.Create
+	function vgui.Create(class, ...)
+		local panel = baseVguiCreate(class, ...)
+		if class == "DFrame" and IsValid(panel) then
+			local baseSetTitle = panel.SetTitle
+			panel.SetTitle = function(self, title, ...)
+				baseSetTitle(self, title, ...)
+				if title == "Door options" then
+					self:Remove()
+				end
+			end
 		end
+		return panel
 	end
 end
 
