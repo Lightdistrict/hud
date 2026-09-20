@@ -1,7 +1,7 @@
 -- F2 door menu, replacing the old default DarkRP-adjacent "Door options"
--- popup with something matching the rest of the MAX UI (dark panels,
--- accent color, Montserrat, light 1px outline -- same recipe as the
--- Skills tab). All actions are the real DarkRP chat commands
+-- popup with something matching the rest of the MAX UI: a dark header,
+-- red close button, and flat muted-gray option rows, Montserrat. All
+-- actions are the real DarkRP chat commands
 -- (gamemode/modules/doorsystem/sv_doors.lua) run silently via the "say"
 -- concommand -- DarkRP's own chat handler swallows a recognized command
 -- and never echoes it to chat (modules/chat/sv_chat.lua returns "" once
@@ -43,15 +43,18 @@ do
 	end
 end
 
-local COLOR_BG = Color(12, 12, 15, 245)
-local COLOR_PANEL = Color(0, 0, 0, 225)
-local COLOR_PANEL_HOVER = Color(0, 0, 0, 255)
-local COLOR_OUTLINE = Color(255, 255, 255, 25)
+local COLOR_BG = Color(18, 18, 18, 250)
+local COLOR_PANEL = Color(105, 98, 91, 235)
+local COLOR_PANEL_HOVER = Color(125, 117, 109, 250)
+local COLOR_BORDER = Color(0, 0, 0, 130)
 local COLOR_CLOSE = Color(200, 60, 60)
 local COLOR_CLOSE_HOVER = Color(230, 80, 80)
 
-local FONT_TITLE = MaxHUD.font("doormenu_title", { font = "Montserrat", size = 18, weight = 700, antialias = true })
-local FONT_BUTTON = MaxHUD.font("doormenu_button", { font = "Montserrat", size = 16, weight = 600, antialias = true })
+-- weight = 400 -- see cl_fonts.lua: the bundled Montserrat TTF is
+-- regular-only, so a higher weight here just fakes bold via synthetic
+-- thickening instead of using a real bold cut, which looked too chunky.
+local FONT_TITLE = MaxHUD.font("doormenu_title", { font = "Montserrat", size = 18, weight = 400, antialias = true })
+local FONT_BUTTON = MaxHUD.font("doormenu_button", { font = "Montserrat", size = 16, weight = 400, antialias = true })
 
 local MENU_RANGE = 200
 local MENU_W = 300
@@ -70,13 +73,11 @@ hook.Add("InitPostEntity", "maxhud_doormenu_privs", function()
 end)
 
 --[[
-- Draws a rounded panel with a faint 1px light outline -- same recipe as
-- the Skills tab (levelsystem/cl_skills_tab.lua) so this reads as part of
-- the same UI family.
+- Draws a rounded panel with a thin dark border.
 ]]
 local function drawPanel(w, h, fillColor, radius)
 	radius = radius or 8
-	draw.RoundedBox(radius, 0, 0, w, h, COLOR_OUTLINE)
+	draw.RoundedBox(radius, 0, 0, w, h, COLOR_BORDER)
 	draw.RoundedBox(radius, 1, 1, w - 2, h - 2, fillColor)
 end
 
@@ -105,9 +106,8 @@ local function addButton(parent, label, onClick)
 	btn:SetPos(PAD, y)
 	btn:SetSize(MENU_W - PAD * 2, BTN_H)
 	btn.Paint = function(self, w, h)
-		drawPanel(w, h, self:IsHovered() and COLOR_PANEL_HOVER or COLOR_PANEL, 6)
-		local textColor = self:IsHovered() and Config.colors.accent or Config.colors.text
-		draw.SimpleText(label, FONT_BUTTON, w / 2, h / 2, textColor, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
+		drawPanel(w, h, self:IsHovered() and COLOR_PANEL_HOVER or COLOR_PANEL, 4)
+		draw.SimpleText(label, FONT_BUTTON, w / 2, h / 2, Config.colors.text, TEXT_ALIGN_CENTER, TEXT_ALIGN_CENTER)
 	end
 	btn.DoClick = function()
 		surface.PlaySound("buttons/button15.wav")

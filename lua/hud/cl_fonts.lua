@@ -26,13 +26,17 @@ local font = MaxHUD.font
 -- additional per-item bump on top of that base label size, per spec.
 local baseLabelSize = 20
 
+-- weight = 400 (the bundled TTF's real, only weight -- montserrat-regular.ttf)
+-- everywhere below. Asking for a heavier weight than a font file actually
+-- has makes GMod's renderer fake-bold it via synthetic thickening, which
+-- is what made this text look chunky/thick instead of sleek.
 MaxHUD.Fonts = {
-	value = font("value", { font = "Montserrat", size = 24, weight = 700, antialias = true }),
-	label = font("label", { font = "Montserrat", size = baseLabelSize, weight = 600, antialias = true }),
-	money = font("money", { font = "Montserrat", size = math.Round(baseLabelSize * 1.25), weight = 600, antialias = true }),
-	level = font("level", { font = "Montserrat", size = math.Round(baseLabelSize * 1.25), weight = 600, antialias = true }),
-	time = font("time", { font = "Montserrat", size = math.Round(baseLabelSize * 1.15), weight = 600, antialias = true }),
-	date = font("date", { font = "Montserrat", size = math.Round(baseLabelSize * 1.20), weight = 600, antialias = true }),
-	job = font("job", { font = "Montserrat", size = baseLabelSize, weight = 600, antialias = true }),
-	brand = font("brand", { font = "Montserrat", size = baseLabelSize, weight = 700, antialias = true }),
+	value = font("value", { font = "Montserrat", size = 24, weight = 400, antialias = true }),
+	label = font("label", { font = "Montserrat", size = baseLabelSize, weight = 400, antialias = true }),
+	money = font("money", { font = "Montserrat", size = math.Round(baseLabelSize * 1.25), weight = 400, antialias = true }),
+	level = font("level", { font = "Montserrat", size = math.Round(baseLabelSize * 1.25), weight = 400, antialias = true }),
+	time = font("time", { font = "Montserrat", size = math.Round(baseLabelSize * 1.15), weight = 400, antialias = true }),
+	date = font("date", { font = "Montserrat", size = math.Round(baseLabelSize * 1.20), weight = 400, antialias = true }),
+	job = font("job", { font = "Montserrat", size = baseLabelSize, weight = 400, antialias = true }),
+	brand = font("brand", { font = "Montserrat", size = baseLabelSize, weight = 400, antialias = true }),
 }
