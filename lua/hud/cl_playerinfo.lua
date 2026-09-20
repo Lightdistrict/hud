@@ -13,12 +13,14 @@
 
 local Config = MaxHUD.Config
 
-surface.CreateFont("maxhud.playertag_name", { font = "Montserrat", size = 34, weight = 700, antialias = true })
-surface.CreateFont("maxhud.playertag_job", { font = "Montserrat", size = 26, weight = 600, antialias = true })
-surface.CreateFont("maxhud.playertag_status", { font = "Montserrat", size = 30, weight = 800, antialias = true })
+-- Reuses the exact same fonts (and cam.Start3D2D scale) as cl_doorinfo.lua's
+-- door price text -- "maxhud.door_title"/"maxhud.door_sub" -- so overhead
+-- tags read as the same UI system as the on-door text instead of a
+-- separately-tuned look.
 
 local NAMETAG_RANGE = 700
 local STATUS_RANGE = 2000
+local SCALE = 0.05
 
 hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_playerinfo", function()
 	local lp = LocalPlayer()
@@ -43,25 +45,35 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_playerinfo", function()
 
 		local pos = ply:EyePos() + Vector(0, 0, 14)
 		local fadeMul = math.Clamp(1 - (dist / STATUS_RANGE), 0.3, 1)
+		local teamColor = team.GetColor(ply:Team())
 
-		cam.Start3D2D(pos, billboardAng, 0.1)
-			local y = 0
+		-- Whichever line is most important becomes the big "door_title"
+		-- line (bottom-aligned at y=0, exactly like the door price text),
+		-- everything else stacks below it as smaller "door_sub" lines --
+		-- same two-tier look as the door info, just applied to a person.
+		local primaryText, primaryColor
+		if wanted then
+			primaryText, primaryColor = "WANTED", Config.colors.health
+		elseif arrested then
+			primaryText, primaryColor = "ARRESTED", Config.colors.text
+		elseif showNametag then
+			primaryText, primaryColor = ply:Nick(), teamColor
+		end
 
-			if wanted then
-				draw.SimpleTextOutlined("WANTED", "maxhud.playertag_status", 0, y, ColorAlpha(Config.colors.health, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
-				y = y + 34
-			elseif arrested then
-				draw.SimpleTextOutlined("ARRESTED", "maxhud.playertag_status", 0, y, ColorAlpha(Config.colors.text, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
-				y = y + 34
-			end
+		if not primaryText then continue end
 
+		cam.Start3D2D(pos, billboardAng, SCALE)
+			draw.SimpleTextOutlined(primaryText, "maxhud.door_title", 0, 0, ColorAlpha(primaryColor, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, ColorAlpha(color_black, 200 * fadeMul))
+
+			local y = 10
 			if showNametag then
-				local teamColor = team.GetColor(ply:Team())
-				draw.SimpleTextOutlined(ply:Nick(), "maxhud.playertag_name", 0, y, ColorAlpha(teamColor, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
-				y = y + 30
+				if wanted or arrested then
+					draw.SimpleTextOutlined(ply:Nick(), "maxhud.door_sub", 0, y, ColorAlpha(teamColor, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
+					y = y + 65
+				end
 
 				local job = ply:getDarkRPVar("job") or team.GetName(ply:Team())
-				draw.SimpleTextOutlined(job, "maxhud.playertag_job", 0, y, ColorAlpha(Config.colors.text, 220 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
+				draw.SimpleTextOutlined(job, "maxhud.door_sub", 0, y, ColorAlpha(Config.colors.text, 220 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
 			end
 		cam.End3D2D()
 	end
