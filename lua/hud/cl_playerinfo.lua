@@ -13,14 +13,23 @@
 
 local Config = MaxHUD.Config
 
--- Reuses the exact same fonts (and cam.Start3D2D scale) as cl_doorinfo.lua's
--- door price text -- "maxhud.door_title"/"maxhud.door_sub" -- so overhead
--- tags read as the same UI system as the on-door text instead of a
--- separately-tuned look.
+-- Reuses the exact same font (and cam.Start3D2D scale) as cl_doorinfo.lua's
+-- door price text -- "maxhud.door_title" -- for both name and job, so
+-- overhead tags read as the same UI system as the on-door text. Name/job
+-- always render the same way regardless of wanted/arrested status; the
+-- status line is a separate, additional line above them rather than
+-- something that changes their own look.
 
 local NAMETAG_RANGE = 700
 local STATUS_RANGE = 2000
 local SCALE = 0.05
+
+--[[
+- @return number -- t interpolated between two colors (0..1)
+]]
+local function lerpColor(t, a, b)
+	return Color(Lerp(t, a.r, b.r), Lerp(t, a.g, b.g), Lerp(t, a.b, b.b))
+end
 
 hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_playerinfo", function()
 	local lp = LocalPlayer()
@@ -47,33 +56,28 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_playerinfo", function()
 		local fadeMul = math.Clamp(1 - (dist / STATUS_RANGE), 0.3, 1)
 		local teamColor = team.GetColor(ply:Team())
 
-		-- Whichever line is most important becomes the big "door_title"
-		-- line (bottom-aligned at y=0, exactly like the door price text),
-		-- everything else stacks below it as smaller "door_sub" lines --
-		-- same two-tier look as the door info, just applied to a person.
-		local primaryText, primaryColor
-		if wanted then
-			primaryText, primaryColor = "WANTED", Config.colors.health
-		elseif arrested then
-			primaryText, primaryColor = "ARRESTED", Config.colors.text
-		elseif showNametag then
-			primaryText, primaryColor = ply:Nick(), teamColor
-		end
-
-		if not primaryText then continue end
-
 		cam.Start3D2D(pos, billboardAng, SCALE)
-			draw.SimpleTextOutlined(primaryText, "maxhud.door_title", 0, 0, ColorAlpha(primaryColor, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, ColorAlpha(color_black, 200 * fadeMul))
-
-			local y = 10
+			-- Name always sits at the same anchor (y=0, bottom-aligned) no
+			-- matter what -- wanted/arrested never move or restyle it.
 			if showNametag then
-				if wanted or arrested then
-					draw.SimpleTextOutlined(ply:Nick(), "maxhud.door_sub", 0, y, ColorAlpha(teamColor, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
-					y = y + 65
-				end
+				draw.SimpleTextOutlined(ply:Nick(), "maxhud.door_title", 0, 0, ColorAlpha(teamColor, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, ColorAlpha(color_black, 200 * fadeMul))
 
+				-- Same font/size/weight as the name, just a different color,
+				-- immediately below it.
 				local job = ply:getDarkRPVar("job") or team.GetName(ply:Team())
-				draw.SimpleTextOutlined(job, "maxhud.door_sub", 0, y, ColorAlpha(Config.colors.text, 220 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
+				draw.SimpleTextOutlined(job, "maxhud.door_title", 0, 10, ColorAlpha(Config.colors.text, 220 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
+			end
+
+			-- Status line: a separate line above the name, never altering
+			-- the name/job's own position or style. Wanted pulses between
+			-- the same two reds as the lockdown alert (cl_hud.lua); Arrested
+			-- is the same red family but held static, not pulsing.
+			if wanted then
+				local pulse = (math.sin(RealTime() * 6) + 1) / 2
+				local glowColor = lerpColor(pulse, Config.colors.lockdownGlowLow, Config.colors.lockdownGlowHigh)
+				draw.SimpleTextOutlined("WANTED", "maxhud.door_title", 0, -95, ColorAlpha(glowColor, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, ColorAlpha(color_black, 200 * fadeMul))
+			elseif arrested then
+				draw.SimpleTextOutlined("ARRESTED", "maxhud.door_title", 0, -95, ColorAlpha(Config.colors.lockdownGlowLow, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, ColorAlpha(color_black, 200 * fadeMul))
 			end
 		cam.End3D2D()
 	end
