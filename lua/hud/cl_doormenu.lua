@@ -166,7 +166,11 @@ end
 local function openTextPrompt(title, placeholder, onConfirm)
 	if IsValid(groupFrame) then groupFrame:Remove() end
 
-	local h = PAD * 2 + 24 + 8 + BTN_H
+	local titleH = 24
+	local entryH = 24
+	local entryY = PAD + titleH
+	local buttonY = entryY + entryH + 8
+	local h = buttonY + BTN_H + PAD
 
 	groupFrame = vgui.Create("DPanel")
 	groupFrame:SetSize(MENU_W, h)
@@ -178,8 +182,8 @@ local function openTextPrompt(title, placeholder, onConfirm)
 	end
 
 	local entry = vgui.Create("DTextEntry", groupFrame)
-	entry:SetPos(PAD, PAD + 24)
-	entry:SetSize(MENU_W - PAD * 2, 24)
+	entry:SetPos(PAD, entryY)
+	entry:SetSize(MENU_W - PAD * 2, entryH)
 	entry:SetPlaceholderText(placeholder)
 	entry:SetPaintBackground(false)
 	entry.Paint = function(self, w, h)
@@ -196,7 +200,7 @@ local function openTextPrompt(title, placeholder, onConfirm)
 	end
 	entry.OnEnter = confirm
 
-	groupFrame.nextY = PAD + 24 + 8
+	groupFrame.nextY = buttonY
 	addButton(groupFrame, "Confirm", confirm)
 end
 
