@@ -14,6 +14,26 @@
 
 local Config = MaxHUD.Config
 
+-- Some other installed addon (source not found in any repo this project
+-- has access to -- not DarkRP core, confirmed against the actual gamemode
+-- source) still pops its own plain blue "Door options" DFrame on F2
+-- alongside this one. Since its source can't be edited directly, this
+-- patches the stock DFrame:SetTitle method (used by every DFrame in the
+-- game, including ours if we ever used one -- we don't, ours is a DPanel
+-- with its own hand-drawn title) to auto-close any frame titled exactly
+-- "Door options" the instant that title is set, which is how vgui
+-- panels normally get their title assigned right after creation.
+do
+	local frameTable = vgui.GetControlTable("DFrame")
+	local baseSetTitle = frameTable.SetTitle
+	frameTable.SetTitle = function(self, title, ...)
+		baseSetTitle(self, title, ...)
+		if title == "Door options" then
+			self:Remove()
+		end
+	end
+end
+
 local COLOR_BG = Color(12, 12, 15, 245)
 local COLOR_PANEL = Color(0, 0, 0, 225)
 local COLOR_PANEL_HOVER = Color(0, 0, 0, 255)
@@ -124,6 +144,53 @@ local function openGroupMenu(door)
 	end
 end
 
+--[[
+- A small submenu with one text field + confirm button, next to the main
+- frame -- used for "Add Owner"/"Remove Owner" (a player name) and
+- "Set Door Title" (free text). Reuses the `groupFrame` slot since only
+- one submenu is ever open at a time.
+-
+- @param string title
+- @param string placeholder
+- @param function onConfirm -- function(text) end
+]]
+local function openTextPrompt(title, placeholder, onConfirm)
+	if IsValid(groupFrame) then groupFrame:Remove() end
+
+	local h = PAD * 2 + 24 + 8 + BTN_H
+
+	groupFrame = vgui.Create("DPanel")
+	groupFrame:SetSize(MENU_W, h)
+	groupFrame:SetPos(mainFrame:GetX() + mainFrame:GetWide() + 12, mainFrame:GetY())
+	groupFrame:MakePopup()
+	groupFrame.Paint = function(self, w, h)
+		drawPanel(w, h, COLOR_BG, 10)
+		draw.SimpleText(title, FONT_BUTTON, PAD, PAD, Config.colors.text, TEXT_ALIGN_LEFT, TEXT_ALIGN_TOP)
+	end
+
+	local entry = vgui.Create("DTextEntry", groupFrame)
+	entry:SetPos(PAD, PAD + 24)
+	entry:SetSize(MENU_W - PAD * 2, 24)
+	entry:SetPlaceholderText(placeholder)
+	entry:SetPaintBackground(false)
+	entry.Paint = function(self, w, h)
+		drawPanel(w, h, COLOR_PANEL, 4)
+		derma.SkinHook("Paint", "TextEntry", self, w, h)
+	end
+	entry:RequestFocus()
+
+	local function confirm()
+		local text = string.Trim(entry:GetValue())
+		if text == "" then return end
+		onConfirm(text)
+		closeAll()
+	end
+	entry.OnEnter = confirm
+
+	groupFrame.nextY = PAD + 24 + 8
+	addButton(groupFrame, "Confirm", confirm)
+end
+
 local function buildMenu(door)
 	closeAll()
 
@@ -132,7 +199,7 @@ local function buildMenu(door)
 	local blocked = door:getKeysNonOwnable()
 
 	local showBuySell = mine or (not IsValid(owner) and not blocked)
-	local rows = (showBuySell and 1 or 0) + (changeDoorAccess and 2 or 0)
+	local rows = (showBuySell and 1 or 0) + (mine and 3 or 0) + (changeDoorAccess and 2 or 0)
 	local h = PAD * 2 + 32 + math.max(rows, 1) * (BTN_H + BTN_GAP) - BTN_GAP
 
 	mainFrame = vgui.Create("DPanel")
@@ -179,6 +246,24 @@ local function buildMenu(door)
 		addButton(mainFrame, "Sell Door", function()
 			sendDoorCommand("toggleown")
 			closeAll()
+		end)
+	end
+
+	if mine then
+		addButton(mainFrame, "Add Owner", function()
+			openTextPrompt("Add Owner", "Player name", function(name)
+				sendDoorCommand("addowner " .. name)
+			end)
+		end)
+		addButton(mainFrame, "Remove Owner", function()
+			openTextPrompt("Remove Owner", "Player name", function(name)
+				sendDoorCommand("removeowner " .. name)
+			end)
+		end)
+		addButton(mainFrame, "Set Door Title", function()
+			openTextPrompt("Set Door Title", "Title", function(text)
+				sendDoorCommand("title " .. text)
+			end)
 		end)
 	end
 
