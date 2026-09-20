@@ -17,9 +17,12 @@ surface.CreateFont("maxhud.door_sub", { font = "Montserrat", size = 60, weight =
 
 local DRAW_DISTANCE = 250
 
-local function isOwnableDoor(door)
+-- Exposed on MaxHUD since cl_doormenu.lua (the F2 popup) needs the exact
+-- same "is this a real, currently-purchasable door" check.
+function MaxHUD.IsOwnableDoor(door)
 	return IsValid(door) and door.isDoor and door.isKeysOwnable and door:isDoor() and door:isKeysOwnable() and not door:getKeysNonOwnable()
 end
+local isOwnableDoor = MaxHUD.IsOwnableDoor
 
 local function getCoowners(door, owner)
 	local coowners = {}
