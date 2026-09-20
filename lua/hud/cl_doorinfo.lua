@@ -1,9 +1,10 @@
--- 3D2D door info: replaces DarkRP's own crosshair-centered door text
--- (meta:drawOwnableInfo, gamemode/modules/doorsystem/cl_doors.lua) with
--- text drawn directly on the door itself, matching the rest of the MAX UI
--- (Montserrat, accent color, dark outline). Suppressing the default text
--- is done the documented way -- HUDDrawDoorData returning true, exactly
--- what meta:drawOwnableInfo itself checks before drawing.
+-- 3D2D door (and ownable vehicle) info: replaces DarkRP's own
+-- crosshair-centered text (meta:drawOwnableInfo,
+-- gamemode/modules/doorsystem/cl_doors.lua) with text drawn directly on
+-- the object itself, matching the rest of the MAX UI (Montserrat, accent
+-- color, dark outline). Suppressing the default text is done the
+-- documented way -- HUDDrawDoorData returning true, exactly what
+-- meta:drawOwnableInfo itself checks before drawing.
 --
 -- All entity checks below (isDoor/isKeysOwnable/getKeysTitle/getDoorOwner/
 -- getKeysCoOwners/isKeysAllowedToOwn/getKeysDoorGroup/getKeysDoorTeams) are
@@ -22,7 +23,16 @@ local DRAW_DISTANCE = 250
 function MaxHUD.IsOwnableDoor(door)
 	return IsValid(door) and door.isDoor and door.isKeysOwnable and door:isDoor() and door:isKeysOwnable() and not door:getKeysNonOwnable()
 end
-local isOwnableDoor = MaxHUD.IsOwnableDoor
+
+-- Vehicles use the exact same ownership API as doors (isKeysOwnable/
+-- getDoorOwner/isKeysOwnedBy/etc, gamemode/modules/doorsystem/sh_doors.lua
+-- -- isKeysOwnable() itself checks GAMEMODE.Config.allowvehicleowning and
+-- IsVehicle()), so this file's on-object text and DarkRP suppression cover
+-- both -- "Vehicle Owner Info" needs no separate system.
+local function isOwnableInteractable(door)
+	return MaxHUD.IsOwnableDoor(door) or (IsValid(door) and door.isKeysOwnable and door:IsVehicle() and door:isKeysOwnable() and not door:getKeysNonOwnable())
+end
+local isOwnableDoor = isOwnableInteractable
 
 local function getCoowners(door, owner)
 	local coowners = {}
@@ -155,7 +165,8 @@ hook.Add("PostDrawTranslucentRenderables", "maxhud_draw_doorinfo", function()
 			elseif #groups > 0 then
 				draw.SimpleTextOutlined(table.concat(groups, ", "), "maxhud.door_title", 0, 0, ColorAlpha(Config.colors.accent, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, ColorAlpha(color_black, 200 * fadeMul))
 			else
-				draw.SimpleTextOutlined(DarkRP.formatMoney(GAMEMODE.Config.doorcost), "maxhud.door_title", 0, 0, ColorAlpha(Config.colors.accent, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, ColorAlpha(color_black, 200 * fadeMul))
+				local cost = door:IsVehicle() and GAMEMODE.Config.vehiclecost or GAMEMODE.Config.doorcost
+				draw.SimpleTextOutlined(DarkRP.formatMoney(cost), "maxhud.door_title", 0, 0, ColorAlpha(Config.colors.accent, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM, 1, ColorAlpha(color_black, 200 * fadeMul))
 				draw.SimpleTextOutlined("Press F2 to purchase", "maxhud.door_sub", 0, 10, ColorAlpha(Config.colors.text, 255 * fadeMul), TEXT_ALIGN_CENTER, TEXT_ALIGN_TOP, 1, ColorAlpha(color_black, 200 * fadeMul))
 			end
 		end

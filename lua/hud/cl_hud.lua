@@ -28,8 +28,14 @@ local Config = MaxHUD.Config
 -- "DarkRP_Hungermod" is the hungermod addon's own bottom-left hunger bar
 -- (gamemode/modules/hungermod/cl_init.lua) -- hidden since our own top-strip
 -- hunger chip already covers it.
+-- "DarkRP_EntityDisplay" is DarkRP's own screen-space name/health/job
+-- above-head text AND its crosshair door/vehicle ownership text (both
+-- live in the same DrawEntityDisplay function, gated by this one hook
+-- name) -- hidden in favor of cl_playerinfo.lua's 3D2D version and
+-- cl_doorinfo.lua's on-object text respectively, neither of which depend
+-- on this hook firing.
 hook.Add("HUDShouldDraw", "maxhud_hide_darkrp_hud", function(name)
-	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" or name == "DarkRP_Agenda" or name == "DarkRP_ArrestedHUD" or name == "DarkRP_Hungermod" then
+	if name == "DarkRP_LocalPlayerHUD" or name == "DarkRP_LockdownHUD" or name == "DarkRP_Agenda" or name == "DarkRP_ArrestedHUD" or name == "DarkRP_Hungermod" or name == "DarkRP_EntityDisplay" then
 		return false
 	end
 end)
