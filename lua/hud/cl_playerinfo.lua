@@ -20,8 +20,10 @@ local Config = MaxHUD.Config
 -- status line is a separate, additional line above them rather than
 -- something that changes their own look.
 
+-- Wanted/Arrested now share the exact same draw distance as the
+-- name/job nametag instead of their own further-out range.
 local NAMETAG_RANGE = 700
-local STATUS_RANGE = 1200
+local STATUS_RANGE = NAMETAG_RANGE
 local MAX_VISIBLE = 10
 local SCALE = 0.05
 
